@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
-from .api import analytics
+from .api import analytics, auth
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -18,6 +18,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth.router)
 app.include_router(analytics.router)
 
 @app.get("/")

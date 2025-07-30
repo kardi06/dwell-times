@@ -1,14 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import {
-  Box,
-  Paper,
-  Typography,
-  LinearProgress,
-  Alert,
-  Button,
-  IconButton
-} from '@mui/material';
-import { CloudUpload, Close } from '@mui/icons-material';
+import { Card, Alert, Button, Loading } from '../ui';
 import { useDropzone } from 'react-dropzone';
 
 interface FileUploadProps {
@@ -83,14 +74,14 @@ const FileUpload: React.FC<FileUploadProps> = ({
       
       clearInterval(progressInterval);
       setUploadProgress(100);
-      setSuccess('File uploaded successfully!');
+      setSuccess('File uploaded successfully! Data is being processed...');
       setSelectedFile(null);
       
       // Reset progress after a delay
       setTimeout(() => {
         setUploadProgress(0);
         setSuccess('');
-      }, 2000);
+      }, 3000);
 
     } catch (err: any) {
       setError(err.message || 'Upload failed. Please try again.');
@@ -106,86 +97,123 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   return (
-    <Box sx={{ width: '100%', maxWidth: 600, mx: 'auto' }}>
-      <Paper
-        elevation={2}
-        sx={{
-          p: 3,
-          border: '2px dashed',
-          borderColor: isDragActive ? 'primary.main' : 'grey.300',
-          backgroundColor: isDragActive ? 'action.hover' : 'background.paper',
-          transition: 'all 0.2s ease-in-out'
-        }}
+    <div className="w-full max-w-2xl mx-auto space-y-6">
+      {/* Drop Zone */}
+      <Card 
+        variant={isDragActive ? "elevated" : "default"}
+        className={`
+          border-2 border-dashed transition-all duration-300 cursor-pointer
+          ${isDragActive 
+            ? 'border-primary-500 bg-primary-50 shadow-glow' 
+            : 'border-secondary-300 hover:border-primary-400 hover:bg-secondary-50'
+          }
+        `}
         {...getRootProps()}
       >
         <input {...getInputProps()} />
         
-        <Box sx={{ textAlign: 'center' }}>
-          <CloudUpload sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+        <div className="p-8 text-center">
+          <div className={`
+            inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 transition-colors duration-300
+            ${isDragActive ? 'bg-primary-100 text-primary-600' : 'bg-secondary-100 text-secondary-600'}
+          `}>
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+          </div>
           
-          <Typography variant="h6" gutterBottom>
+          <h3 className={`text-lg font-semibold mb-2 transition-colors duration-300 ${
+            isDragActive ? 'text-primary-600' : 'text-secondary-900'
+          }`}>
             {isDragActive ? 'Drop the file here' : 'Drag & drop a CSV file here'}
-          </Typography>
+          </h3>
           
-          <Typography variant="body2" color="textSecondary" gutterBottom>
+          <p className="text-secondary-600 mb-2">
             or click to browse files
-          </Typography>
+          </p>
           
-          <Typography variant="caption" color="textSecondary">
-            Maximum file size: {maxFileSize / (1024 * 1024)}MB
-          </Typography>
-        </Box>
-      </Paper>
+          <p className="text-xs text-secondary-500">
+            Maximum file size: {maxFileSize / (1024 * 1024)}MB • Supported: CSV files
+          </p>
+        </div>
+      </Card>
 
+      {/* Selected File */}
       {selectedFile && (
-        <Paper sx={{ mt: 2, p: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box>
-              <Typography variant="body1" fontWeight="medium">
-                {selectedFile.name}
-              </Typography>
-              <Typography variant="caption" color="textSecondary">
-                {(selectedFile.size / 1024).toFixed(1)} KB
-              </Typography>
-            </Box>
-            <IconButton onClick={clearFile} size="small">
-              <Close />
-            </IconButton>
-          </Box>
-          
-          <Button
-            variant="contained"
-            onClick={handleUpload}
-            disabled={uploading}
-            sx={{ mt: 2 }}
-            fullWidth
-          >
-            {uploading ? 'Uploading...' : 'Upload File'}
-          </Button>
-        </Paper>
+        <Card variant="elevated" className="animate-slide-up">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-success-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5 text-success-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="font-medium text-secondary-900">
+                    {selectedFile.name}
+                  </h4>
+                  <p className="text-sm text-secondary-500">
+                    {(selectedFile.size / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={clearFile}
+                className="p-2 text-secondary-400 hover:text-secondary-600 transition-colors duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={handleUpload}
+              disabled={uploading}
+              loading={uploading}
+              fullWidth
+            >
+              {uploading ? 'Uploading...' : 'Upload File'}
+            </Button>
+          </div>
+        </Card>
       )}
 
+      {/* Upload Progress */}
       {uploading && (
-        <Box sx={{ mt: 2 }}>
-          <LinearProgress variant="determinate" value={uploadProgress} />
-          <Typography variant="caption" color="textSecondary">
-            {uploadProgress}% complete
-          </Typography>
-        </Box>
+        <Card variant="default" className="animate-slide-up">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-secondary-700">Upload Progress</span>
+              <span className="text-sm text-secondary-500">{uploadProgress}%</span>
+            </div>
+            <div className="w-full bg-secondary-200 rounded-full h-2">
+              <div 
+                className="bg-primary-600 h-2 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+          </div>
+        </Card>
       )}
 
+      {/* Error Alert */}
       {error && (
-        <Alert severity="error" sx={{ mt: 2 }}>
+        <Alert variant="error" className="animate-fade-in">
           {error}
         </Alert>
       )}
 
+      {/* Success Alert */}
       {success && (
-        <Alert severity="success" sx={{ mt: 2 }}>
+        <Alert variant="success" className="animate-fade-in">
           {success}
         </Alert>
       )}
-    </Box>
+    </div>
   );
 };
 

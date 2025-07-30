@@ -1,15 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Container,
-  Typography,
-  Paper,
-  Tabs,
-  Tab,
-  Alert
-} from '@mui/material';
-import { Upload, Analytics, TableChart } from '@mui/icons-material';
-// import LoginForm from '../Auth/LoginForm';
+import { Card, Alert, Button, Loading } from '../ui';
 import FileUpload from '../FileUpload/FileUpload';
 import KPICards from './KPICards';
 import EventTable from './EventTable';
@@ -86,108 +76,182 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
     fetchMetrics();
   }, [token]);
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
-  };
+  const tabs = [
+    { id: 0, name: 'Upload Data', icon: '📁', description: 'Upload camera event data' },
+    { id: 1, name: 'Analytics', icon: '📊', description: 'View detailed analytics' },
+    { id: 2, name: 'Event Table', icon: '📋', description: 'Browse event data' },
+  ];
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen bg-gradient-to-br from-secondary-50 to-primary-50">
       {/* Header */}
-      <Paper elevation={1} sx={{ mb: 3 }}>
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h4" component="h1">
-            Dwell-Insight Analytics Dashboard
-          </Typography>
-          <Box>
-            <Typography variant="body2" color="textSecondary" sx={{ mr: 2 }}>
-              Welcome back!
-            </Typography>
-            <button onClick={onLogout} style={{ 
-              background: 'none', 
-              border: 'none', 
-              color: '#1976d2', 
-              cursor: 'pointer',
-              textDecoration: 'underline'
-            }}>
-              Logout
-            </button>
-          </Box>
-        </Box>
-      </Paper>
+      <header className="bg-white shadow-soft border-b border-secondary-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center justify-center w-10 h-10 bg-primary-600 rounded-lg">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-secondary-900 font-display">
+                  Dwell-Insight Analytics
+                </h1>
+                <p className="text-sm text-secondary-600">
+                  Camera Event Analytics Dashboard
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm text-secondary-600">Welcome back!</p>
+                <p className="text-sm font-medium text-secondary-900">Admin User</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onLogout}
+                className="text-secondary-600 hover:text-secondary-900"
+              >
+                Logout
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
 
-      <Container maxWidth="xl">
-        {/* KPI Cards */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h5" gutterBottom>
-            Key Performance Indicators
-          </Typography>
-          <KPICards metrics={metrics} loading={loading} />
-        </Box>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* KPI Cards Section */}
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-secondary-900 font-display">
+                Key Performance Indicators
+              </h2>
+              <p className="text-secondary-600 mt-1">
+                Real-time analytics overview
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchMetrics}
+              disabled={loading}
+              className="flex items-center space-x-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>Refresh</span>
+            </Button>
+          </div>
+          
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <div className="h-24 bg-secondary-200 rounded"></div>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <KPICards metrics={metrics} loading={loading} />
+          )}
+        </section>
 
         {/* Error Display */}
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert variant="error" className="mb-6">
             {error}
           </Alert>
         )}
 
         {/* Main Content Tabs */}
-        <Paper elevation={2}>
-          <Tabs value={activeTab} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tab 
-              icon={<Upload />} 
-              label="Upload Data" 
-              iconPosition="start"
-            />
-            <Tab 
-              icon={<Analytics />} 
-              label="Analytics" 
-              iconPosition="start"
-            />
-            <Tab 
-              icon={<TableChart />} 
-              label="Event Table" 
-              iconPosition="start"
-            />
-          </Tabs>
+        <Card variant="elevated" className="overflow-hidden">
+          {/* Tab Navigation */}
+          <div className="border-b border-secondary-200 bg-secondary-50">
+            <nav className="flex space-x-8 px-6" aria-label="Tabs">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200
+                    ${activeTab === tab.id
+                      ? 'border-primary-500 text-primary-600 bg-white'
+                      : 'border-transparent text-secondary-500 hover:text-secondary-700 hover:border-secondary-300'
+                    }
+                  `}
+                >
+                  <span className="text-lg">{tab.icon}</span>
+                  <span>{tab.name}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
 
-          <Box sx={{ p: 3 }}>
+          {/* Tab Content */}
+          <div className="p-6">
             {activeTab === 0 && (
-              <Box>
-                <Typography variant="h6" gutterBottom>
-                  Upload Camera Event Data
-                </Typography>
-                <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
-                  Drag and drop a CSV file with camera event data to process and analyze.
-                </Typography>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">
+                    Upload Camera Event Data
+                  </h3>
+                  <p className="text-secondary-600">
+                    Drag and drop a CSV file with camera event data to process and analyze. 
+                    The file should contain columns for camera ID, timestamp, and visitor ID.
+                  </p>
+                </div>
                 <FileUpload onFileUpload={handleFileUpload} />
-              </Box>
+              </div>
             )}
 
             {activeTab === 1 && (
-              <Box>
-                <Typography variant="h6" gutterBottom>
-                  Analytics Overview
-                </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Detailed analytics and insights will be displayed here.
-                </Typography>
-                {/* TODO: Add charts and detailed analytics */}
-              </Box>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">
+                    Analytics Overview
+                  </h3>
+                  <p className="text-secondary-600">
+                    Detailed analytics and insights will be displayed here.
+                  </p>
+                </div>
+                <div className="bg-secondary-50 rounded-lg p-8 text-center">
+                  <div className="w-16 h-16 bg-secondary-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-lg font-medium text-secondary-900 mb-2">
+                    Analytics Coming Soon
+                  </h4>
+                  <p className="text-secondary-600">
+                    Advanced analytics features are under development.
+                  </p>
+                </div>
+              </div>
             )}
 
             {activeTab === 2 && (
-              <Box>
-                <Typography variant="h6" gutterBottom>
-                  Event Data Table
-                </Typography>
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">
+                    Event Data Table
+                  </h3>
+                  <p className="text-secondary-600">
+                    Browse and search through processed camera event data.
+                  </p>
+                </div>
                 <EventTable token={token} />
-              </Box>
+              </div>
             )}
-          </Box>
-        </Paper>
-      </Container>
-    </Box>
+          </div>
+        </Card>
+      </div>
+    </div>
   );
 };
 
