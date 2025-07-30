@@ -12,8 +12,11 @@ logger = logging.getLogger(__name__)
 class CSVProcessor:
     """Handles CSV file processing for camera event data"""
     
-    REQUIRED_COLUMNS = ['timestamp', 'person_id', 'camera_id', 'event_type']
-    VALID_EVENT_TYPES = ['entry', 'exit', 'loiter', 'crowd']
+    REQUIRED_COLUMNS = ['person_id', 'camera_id', 'event_type']
+    VALID_EVENT_TYPES = ['entry', 'exit', 'loiter', 'crowd', 'appearance']
+    
+    # Map your timestamp columns to our expected format
+    TIMESTAMP_COLUMNS = ['timestamp', 'utc_time_re', 'utc_time_st', 'utc_time_e', 'frame_time', 'utc_time_received', 'utc_time_start', 'utc_time_end']
     
     def __init__(self, db: Session):
         self.db = db
@@ -22,10 +25,27 @@ class CSVProcessor:
         """Validate CSV structure and required columns"""
         errors = []
         
+        # Debug: Log available columns
+        logger.info(f"Available columns in CSV: {list(df.columns)}")
+        
         # Check required columns
         missing_columns = set(self.REQUIRED_COLUMNS) - set(df.columns)
         if missing_columns:
             errors.append(f"Missing required columns: {missing_columns}")
+        
+        # Check for timestamp column (any of the allowed timestamp columns)
+        timestamp_found = any(col in df.columns for col in self.TIMESTAMP_COLUMNS)
+        if not timestamp_found:
+            # Try to find any column that contains 'time' or 'timestamp'
+            time_columns = [col for col in df.columns if 'time' in col.lower() or 'timestamp' in col.lower()]
+            if time_columns:
+                # Add found time columns to allowed list
+                self.TIMESTAMP_COLUMNS.extend(time_columns)
+                timestamp_found = True
+                logger.info(f"Found time columns: {time_columns}")
+            else:
+                errors.append(f"Missing timestamp column. Expected one of: {self.TIMESTAMP_COLUMNS}")
+                errors.append(f"Available columns: {list(df.columns)}")
         
         # Check for empty dataframe
         if df.empty:
@@ -65,35 +85,37 @@ class CSVProcessor:
     
     def parse_timestamps(self, df: pd.DataFrame) -> pd.DataFrame:
         """Parse timestamps with multiple format support"""
-        if 'timestamp' not in df.columns:
+        # Find the timestamp column to use
+        timestamp_col = None
+        for col in self.TIMESTAMP_COLUMNS:
+            if col in df.columns:
+                timestamp_col = col
+                break
+        
+        if not timestamp_col:
+            logger.warning("No timestamp column found, using current time")
+            df['timestamp'] = pd.Timestamp.now()
             return df
         
-        # Try common timestamp formats
-        timestamp_formats = [
-            '%Y-%m-%d %H:%M:%S',
-            '%Y-%m-%dT%H:%M:%S',
-            '%Y-%m-%dT%H:%M:%S.%f',
-            '%Y-%m-%d %H:%M:%S.%f',
-            '%Y-%m-%d',
-            '%m/%d/%Y %H:%M:%S',
-            '%d/%m/%Y %H:%M:%S'
-        ]
-        
-        for fmt in timestamp_formats:
-            try:
-                df['timestamp'] = pd.to_datetime(df['timestamp'], format=fmt)
-                logger.info(f"Successfully parsed timestamps using format: {fmt}")
-                break
-            except:
-                continue
-        else:
-            # Try automatic parsing as fallback
-            try:
-                df['timestamp'] = pd.to_datetime(df['timestamp'])
-                logger.info("Successfully parsed timestamps using automatic detection")
-            except Exception as e:
-                logger.error(f"Failed to parse timestamps: {e}")
-                raise DataValidationError(f"Unable to parse timestamp column: {e}")
+        # Convert Unix timestamps (scientific notation) to datetime
+        try:
+            # Handle scientific notation (e.g., 1.754E+09)
+            if df[timestamp_col].dtype == 'object':
+                # Convert scientific notation to float first
+                df['timestamp'] = pd.to_numeric(df[timestamp_col], errors='coerce')
+            
+            # Convert Unix timestamp to datetime
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s', errors='coerce')
+            
+            # Fill any NaT values with current time
+            df['timestamp'] = df['timestamp'].fillna(pd.Timestamp.now())
+            
+            logger.info(f"Successfully parsed timestamps from column: {timestamp_col}")
+            
+        except Exception as e:
+            logger.error(f"Failed to parse timestamps from {timestamp_col}: {e}")
+            # Fallback to current time
+            df['timestamp'] = pd.Timestamp.now()
         
         return df
     

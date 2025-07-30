@@ -1,5 +1,6 @@
 from app.core.database import Base
 from app.models.user import User
+from app.models.camera_events import CameraEvent, PersonSession, AnalyticsCache
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config

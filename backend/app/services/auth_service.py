@@ -50,7 +50,8 @@ class AuthService:
         except JWTError:
             return None
     
-    def get_current_user(self, credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
+    @staticmethod
+    def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)) -> User:
         """Get current authenticated user"""
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -59,7 +60,8 @@ class AuthService:
         )
         
         token = credentials.credentials
-        username = self.verify_token(token)
+        auth_service = AuthService(db)
+        username = auth_service.verify_token(token)
         if username is None:
             raise credentials_exception
         
