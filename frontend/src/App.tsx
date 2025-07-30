@@ -1,35 +1,55 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import LoginForm from './components/Auth/LoginForm';
+import Dashboard from './components/Dashboard/Dashboard';
+
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+  },
+});
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
+  const [isAuthenticated, setIsAuthenticated] = useState(!!token);
+
+  const handleLogin = (newToken: string) => {
+    setToken(newToken);
+    setIsAuthenticated(true);
+    localStorage.setItem('authToken', newToken);
+  };
+
+  const handleLogout = () => {
+    setToken(null);
+    setIsAuthenticated(false);
+    localStorage.removeItem('authToken');
+  };
+
+  // Check if token is still valid on app load
+  useEffect(() => {
+    if (token) {
+      // In a real app, you'd validate the token with the backend
+      // For now, we'll assume it's valid if it exists
+      setIsAuthenticated(true);
+    }
+  }, [token]);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {isAuthenticated && token ? (
+        <Dashboard token={token} onLogout={handleLogout} />
+      ) : (
+        <LoginForm onLogin={handleLogin} />
+      )}
+    </ThemeProvider>
+  );
 }
 
-export default App
+export default App;

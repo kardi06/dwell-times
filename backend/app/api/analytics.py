@@ -10,6 +10,8 @@ from ..core.database import get_db
 from ..services.csv_processor import CSVProcessor
 from ..services.dwell_time_engine import DwellTimeEngine
 from ..services.analytics_service import AnalyticsService
+from ..services.auth_service import AuthService
+from ..models.user import User
 from ..core.exceptions import DataValidationError, ProcessingError, AnalyticsError
 
 logger = logging.getLogger(__name__)
@@ -19,6 +21,7 @@ router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 @router.post("/upload-csv")
 async def upload_csv_data(
     file: UploadFile = File(...),
+    current_user: User = Depends(AuthService.get_current_user),
     db: Session = Depends(get_db)
 ):
     """Upload and process CSV camera event data"""
@@ -70,6 +73,7 @@ async def upload_csv_data(
 async def get_kpi_metrics(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    current_user: User = Depends(AuthService.get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get KPI metrics for the specified date range"""
