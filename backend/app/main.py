@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
+from .api import analytics
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -15,6 +16,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(analytics.router)
 
 @app.get("/")
 async def root():
