@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
 from typing import Optional, List
 from datetime import datetime, timedelta
 import tempfile
@@ -7,6 +8,7 @@ import os
 import logging
 
 from ..core.database import get_db
+from ..models.camera_events import CameraEvent
 from ..services.csv_processor import CSVProcessor
 from ..services.dwell_time_engine import DwellTimeEngine
 from ..services.analytics_service import AnalyticsService
@@ -326,4 +328,182 @@ async def calculate_dwell_times(
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         logger.error(f"Dwell time calculation failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/events")
+async def get_aggregated_events(
+    page: int = Query(0, ge=0, description="Page number"),
+    limit: int = Query(10, ge=1, le=100, description="Number of records per page"),
+    search: Optional[str] = Query(None, description="Search term for person_id or camera_description"),
+    camera_filter: Optional[str] = Query(None, description="Filter by camera_description"),
+    zone_filter: Optional[str] = Query(None, description="Filter by zone_name"),
+    sort_by: str = Query("created_at", description="Sort by: person_id, camera_description, total_dwell_time, avg_dwell_time, event_count, created_at"),
+    sort_order: str = Query("desc", description="Sort order: asc or desc"),
+    db: Session = Depends(get_db)
+):
+    """Get aggregated events grouped by person_id and camera_description"""
+    try:
+        # Validate sort parameters
+        valid_sort_fields = ['person_id', 'camera_description', 'zone_name', 'total_dwell_time', 'avg_dwell_time', 'event_count', 'created_at']
+        if sort_by not in valid_sort_fields:
+            raise HTTPException(status_code=400, detail=f"Invalid sort_by. Must be one of: {valid_sort_fields}")
+        
+        if sort_order not in ['asc', 'desc']:
+            raise HTTPException(status_code=400, detail="Invalid sort_order. Must be asc or desc")
+        
+        # Build query with GROUP BY
+        query = db.query(
+            CameraEvent.person_id,
+            CameraEvent.camera_description,
+            CameraEvent.zone_name,
+            func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
+            func.avg(CameraEvent.dwell_time).label('avg_dwell_time'),
+            func.count(CameraEvent.id).label('event_count'),
+            func.max(CameraEvent.created_at).label('created_at')
+        ).group_by(
+            CameraEvent.person_id,
+            CameraEvent.camera_description,
+            CameraEvent.zone_name
+        )
+        
+        # Apply filters
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                or_(
+                    CameraEvent.person_id.ilike(search_term),
+                    CameraEvent.camera_description.ilike(search_term)
+                )
+            )
+        
+        if camera_filter:
+            query = query.filter(CameraEvent.camera_description == camera_filter)
+        
+        if zone_filter:
+            query = query.filter(CameraEvent.zone_name == zone_filter)
+        
+        # Apply sorting
+        if sort_by == 'total_dwell_time':
+            order_column = func.sum(CameraEvent.dwell_time)
+        elif sort_by == 'avg_dwell_time':
+            order_column = func.avg(CameraEvent.dwell_time)
+        elif sort_by == 'event_count':
+            order_column = func.count(CameraEvent.id)
+        elif sort_by == 'created_at':
+            order_column = func.max(CameraEvent.created_at)
+        else:
+            order_column = getattr(CameraEvent, sort_by)
+        
+        if sort_order == 'desc':
+            query = query.order_by(order_column.desc())
+        else:
+            query = query.order_by(order_column.asc())
+        
+        # Get total count for pagination
+        total_count = query.count()
+        
+        # Apply pagination
+        query = query.offset(page * limit).limit(limit)
+        
+        # Execute query
+        results = query.all()
+        
+        # Format results
+        events = []
+        for result in results:
+            events.append({
+                'person_id': result.person_id,
+                'camera_description': result.camera_description,
+                'zone_name': result.zone_name or '-',
+                'total_dwell_time': int(result.total_dwell_time or 0),
+                'avg_dwell_time': float(result.avg_dwell_time or 0),
+                'event_count': result.event_count,
+                'created_at': result.created_at.isoformat() if result.created_at else None
+            })
+        
+        return {
+            'events': events,
+            'pagination': {
+                'page': page,
+                'limit': limit,
+                'total': total_count,
+                'pages': (total_count + limit - 1) // limit
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get aggregated events: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/aggregated-dwell-time")
+async def get_aggregated_dwell_time_analytics(
+    group_by: str = Query("person_id", description="Group by: person_id, camera_description"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    db: Session = Depends(get_db)
+):
+    """Get aggregated dwell time statistics using pre-calculated dwell_time values"""
+    try:
+        # Validate group_by parameter
+        if group_by not in ["person_id", "camera_description"]:
+            raise HTTPException(status_code=400, detail="Invalid group_by. Must be person_id or camera_description")
+        
+        # Parse date parameters
+        start_dt = None
+        end_dt = None
+        
+        if start_date:
+            try:
+                start_dt = datetime.fromisoformat(start_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+        
+        if end_date:
+            try:
+                end_dt = datetime.fromisoformat(end_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+        
+        # Build query
+        query = db.query(
+            getattr(CameraEvent, group_by).label('group_value'),
+            func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
+            func.avg(CameraEvent.dwell_time).label('avg_dwell_time'),
+            func.count(CameraEvent.id).label('event_count'),
+            func.min(CameraEvent.dwell_time).label('min_dwell_time'),
+            func.max(CameraEvent.dwell_time).label('max_dwell_time')
+        ).group_by(getattr(CameraEvent, group_by))
+        
+        # Apply date filters
+        if start_dt:
+            query = query.filter(CameraEvent.created_at >= start_dt)
+        if end_dt:
+            query = query.filter(CameraEvent.created_at <= end_dt)
+        
+        # Execute query
+        results = query.all()
+        
+        # Format results
+        analytics = []
+        for result in results:
+            analytics.append({
+                'group_value': result.group_value,
+                'total_dwell_time': int(result.total_dwell_time or 0),
+                'avg_dwell_time': float(result.avg_dwell_time or 0),
+                'event_count': result.event_count,
+                'min_dwell_time': int(result.min_dwell_time or 0),
+                'max_dwell_time': int(result.max_dwell_time or 0)
+            })
+        
+        return {
+            'analytics': analytics,
+            'parameters': {
+                'group_by': group_by,
+                'start_date': start_date,
+                'end_date': end_date
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get aggregated dwell time analytics: {e}")
         raise HTTPException(status_code=500, detail="Internal server error") 

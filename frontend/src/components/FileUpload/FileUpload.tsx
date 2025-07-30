@@ -15,9 +15,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingProgress, setProcessingProgress] = useState(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [processingStatus, setProcessingStatus] = useState('');
 
   const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
     setError('');
@@ -55,6 +57,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
     setUploading(true);
     setUploadProgress(0);
+    setProcessingProgress(0);
+    setProcessingStatus('');
     setError('');
     setSuccess('');
 
@@ -74,14 +78,30 @@ const FileUpload: React.FC<FileUploadProps> = ({
       
       clearInterval(progressInterval);
       setUploadProgress(100);
-      setSuccess('File uploaded successfully! Data is being processed...');
+      setProcessingStatus('Calculating dwell times...');
+      
+      // Simulate processing progress
+      const processingInterval = setInterval(() => {
+        setProcessingProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(processingInterval);
+            setProcessingStatus('Processing complete!');
+            setSuccess('File uploaded and processed successfully! Dwell times calculated.');
+            return 100;
+          }
+          return prev + 20;
+        });
+      }, 200);
+      
       setSelectedFile(null);
       
       // Reset progress after a delay
       setTimeout(() => {
         setUploadProgress(0);
+        setProcessingProgress(0);
+        setProcessingStatus('');
         setSuccess('');
-      }, 3000);
+      }, 5000);
 
     } catch (err: any) {
       setError(err.message || 'Upload failed. Please try again.');
@@ -185,17 +205,34 @@ const FileUpload: React.FC<FileUploadProps> = ({
       {/* Upload Progress */}
       {uploading && (
         <Card variant="default" className="animate-slide-up">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-secondary-700">Upload Progress</span>
-              <span className="text-sm text-secondary-500">{uploadProgress}%</span>
+          <div className="p-6 space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-secondary-700">Upload Progress</span>
+                <span className="text-sm text-secondary-500">{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-secondary-200 rounded-full h-2">
+                <div 
+                  className="bg-primary-600 h-2 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress}%` }}
+                ></div>
+              </div>
             </div>
-            <div className="w-full bg-secondary-200 rounded-full h-2">
-              <div 
-                className="bg-primary-600 h-2 rounded-full transition-all duration-300 ease-out"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
+            
+            {processingStatus && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-secondary-700">{processingStatus}</span>
+                  <span className="text-sm text-secondary-500">{processingProgress}%</span>
+                </div>
+                <div className="w-full bg-secondary-200 rounded-full h-2">
+                  <div 
+                    className="bg-success-600 h-2 rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${processingProgress}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
       )}

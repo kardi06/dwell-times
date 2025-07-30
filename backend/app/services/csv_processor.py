@@ -10,16 +10,17 @@ from ..core.exceptions import DataValidationError
 logger = logging.getLogger(__name__)
 
 class CSVProcessor:
-    """Handles CSV file processing for camera event data"""
+    """Handles CSV file processing for camera event data with dwell time calculation"""
     
-    REQUIRED_COLUMNS = ['person_id', 'camera_id', 'event_type']
+    REQUIRED_COLUMNS = ['person_id', 'camera_id', 'camera_description', 'zone_name', 'utc_time_started_readable', 'utc_time_ended_readable']
     VALID_EVENT_TYPES = ['entry', 'exit', 'loiter', 'crowd', 'appearance']
     
     # Map your timestamp columns to our expected format
     TIMESTAMP_COLUMNS = [
         'timestamp', 'utc_time_re', 'utc_time_st', 'utc_time_e', 'frame_time',
         'utc_time_received', 'utc_time_start', 'utc_time_end',
-        'utc_time_recorded', 'utc_time_s', 'frame_time'
+        'utc_time_recorded', 'utc_time_s', 'frame_time',
+        'utc_time_started_readable', 'utc_time_ended_readable'
     ]
     
     def __init__(self, db: Session):
@@ -123,13 +124,42 @@ class CSVProcessor:
         
         return df
     
+    def calculate_dwell_time(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Calculate dwell time from utc_time_started_readable and utc_time_ended_readable"""
+        if 'utc_time_started_readable' in df.columns and 'utc_time_ended_readable' in df.columns:
+            try:
+                # Parse timestamps
+                df['start_time'] = pd.to_datetime(df['utc_time_started_readable'], errors='coerce')
+                df['end_time'] = pd.to_datetime(df['utc_time_ended_readable'], errors='coerce')
+                
+                # Calculate dwell time in seconds
+                df['dwell_time'] = (df['end_time'] - df['start_time']).dt.total_seconds()
+                
+                # Fill NaN values with 0
+                df['dwell_time'] = df['dwell_time'].fillna(0)
+                
+                logger.info(f"Calculated dwell time for {len(df)} records")
+                return df
+            except Exception as e:
+                logger.error(f"Error calculating dwell time: {e}")
+                df['dwell_time'] = 0
+                return df
+        else:
+            logger.warning("Required timestamp columns not found for dwell time calculation")
+            df['dwell_time'] = 0
+            return df
+    
     def clean_and_prepare_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Clean and prepare data for database insertion"""
+        """Clean and prepare data for database insertion with dwell time calculation"""
         # Remove duplicates
         df = df.drop_duplicates()
         
-        # Sort by timestamp
-        df = df.sort_values('timestamp')
+        # Sort by timestamp if available
+        if 'timestamp' in df.columns:
+            df = df.sort_values('timestamp')
+        
+        # Calculate dwell time
+        df = self.calculate_dwell_time(df)
         
         # Add calculated fields
         df['is_entry'] = df['event_type'] == 'entry'
@@ -245,6 +275,7 @@ class CSVProcessor:
                 # Camera information
                 camera_id=str(row.get('camera_id', '')),
                 camera_de_node_id=row.get('camera_de_node_id'),
+                camera_description=row.get('camera_description'),
                 
                 # Analysis fields
                 analysis_m_record_face=row.get('analysis_m_record_face'),
@@ -255,6 +286,7 @@ class CSVProcessor:
                 # Zone information
                 zone_id=row.get('zone_id'),
                 zone_verific_face_score=row.get('zone_verific_face_score'),
+                zone_name=row.get('zone_name'),
                 
                 # Frame details
                 frame_id=row.get('frame_id'),
@@ -278,6 +310,7 @@ class CSVProcessor:
                 
                 # Calculated fields
                 session_id=row.get('session_id'),
+                dwell_time=row.get('dwell_time', 0),  # Pre-calculated dwell time
                 is_entry=row.get('is_entry'),
                 is_exit=row.get('is_exit'),
                 processed_timestamp=processed_timestamp,

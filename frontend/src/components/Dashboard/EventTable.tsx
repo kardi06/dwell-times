@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, Alert, Button, Input, Loading } from '../ui';
 
 interface CameraEvent {
-  id: number;
-  timestamp: string;
   person_id: string;
-  camera_id: string;
-  event_type: string;
-  dwell_duration?: number;
+  camera_description: string;
+  zone_name?: string; // zone name, can be null
+  total_dwell_time: number; // in seconds, pre-calculated
+  avg_dwell_time: number; // in seconds, pre-calculated
+  event_count: number; // number of events for this person/camera
+  created_at: string; // ISO timestamp of latest event
 }
 
 interface EventTableProps {
@@ -22,68 +23,57 @@ const EventTable: React.FC<EventTableProps> = ({ token }) => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [cameraFilter, setCameraFilter] = useState('');
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     setLoading(true);
     setError('');
     
     try {
-      // For now, we'll simulate data since the backend doesn't have a specific events endpoint
-      // In a real implementation, this would call the backend API
-      const mockEvents: CameraEvent[] = [
-        {
-          id: 1,
-          timestamp: '2024-01-15T10:30:00Z',
-          person_id: 'P001',
-          camera_id: 'CAM001',
-          event_type: 'entry',
-          dwell_duration: 45
-        },
-        {
-          id: 2,
-          timestamp: '2024-01-15T10:35:00Z',
-          person_id: 'P001',
-          camera_id: 'CAM001',
-          event_type: 'exit',
-          dwell_duration: 45
-        },
-        {
-          id: 3,
-          timestamp: '2024-01-15T11:00:00Z',
-          person_id: 'P002',
-          camera_id: 'CAM002',
-          event_type: 'entry',
-          dwell_duration: 120
-        },
-        {
-          id: 4,
-          timestamp: '2024-01-15T11:05:00Z',
-          person_id: 'P003',
-          camera_id: 'CAM001',
-          event_type: 'entry',
-          dwell_duration: 90
-        },
-        {
-          id: 5,
-          timestamp: '2024-01-15T11:10:00Z',
-          person_id: 'P003',
-          camera_id: 'CAM001',
-          event_type: 'exit',
-          dwell_duration: 90
+      // Call the real backend API endpoint
+      const response = await fetch(`http://localhost:8000/api/v1/analytics/events?page=${page}&limit=${rowsPerPage}&search=${searchTerm}&camera_filter=${cameraFilter}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         }
-      ];
-      
-      setEvents(mockEvents);
-    } catch (err) {
-      setError('Failed to fetch events');
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setEvents(data.events || []);
+      setTotalCount(data.pagination?.total || 0);
+      setTotalPages(data.pagination?.pages || 0);
+    } catch (err: any) {
+      console.error('Error fetching events:', err);
+      setError(err.message || 'Failed to fetch events from database');
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, page, rowsPerPage, searchTerm, cameraFilter]);
 
   useEffect(() => {
     fetchEvents();
-  }, [token]);
+  }, [fetchEvents]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setPage(0); // Reset to first page when searching
+      fetchEvents();
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, cameraFilter]);
+
+  // Fetch data when page or rowsPerPage changes
+  useEffect(() => {
+    fetchEvents();
+  }, [page, rowsPerPage]);
 
   const handleChangePage = (newPage: number) => {
     setPage(newPage);
@@ -95,15 +85,17 @@ const EventTable: React.FC<EventTableProps> = ({ token }) => {
   };
 
   const handleExportCSV = () => {
-    const headers = ['Timestamp', 'Person ID', 'Camera ID', 'Event Type', 'Dwell Duration'];
+    const headers = ['Person ID', 'Camera Description', 'Zone Name', 'Total Dwell Time (s)', 'Avg Dwell Time (s)', 'Event Count', 'Created At'];
     const csvContent = [
       headers.join(','),
       ...events.map(event => [
-        event.timestamp,
         event.person_id,
-        event.camera_id,
-        event.event_type,
-        event.dwell_duration || ''
+        event.camera_description,
+        event.zone_name || '-',
+        event.total_dwell_time,
+        event.avg_dwell_time,
+        event.event_count,
+        event.created_at
       ].join(','))
     ].join('\n');
 
@@ -111,45 +103,25 @@ const EventTable: React.FC<EventTableProps> = ({ token }) => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'camera_events.csv';
+    a.download = 'aggregated_camera_events.csv';
     a.click();
     window.URL.revokeObjectURL(url);
   };
 
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = 
-      event.person_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.camera_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.event_type.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesCamera = !cameraFilter || event.camera_id === cameraFilter;
-    
-    return matchesSearch && matchesCamera;
-  });
-
-  const paginatedEvents = filteredEvents.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+  // No need to filter locally since the API handles filtering
+  const paginatedEvents = events;
 
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleString();
   };
 
-  const formatDwellDuration = (duration?: number) => {
-    if (!duration) return '-';
-    return `${Math.floor(duration / 60)}m ${duration % 60}s`;
+  const formatDwellTime = (seconds: number) => {
+    if (!seconds) return '-';
+    return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
   };
 
-  const getEventTypeColor = (eventType: string) => {
-    switch (eventType) {
-      case 'entry':
-        return 'bg-success-100 text-success-800';
-      case 'exit':
-        return 'bg-warning-100 text-warning-800';
-      default:
-        return 'bg-secondary-100 text-secondary-800';
-    }
+  const formatDwellTimeSeconds = (seconds: number) => {
+    return `${seconds}s`;
   };
 
   if (loading) {
@@ -179,7 +151,7 @@ const EventTable: React.FC<EventTableProps> = ({ token }) => {
             className="sm:w-64"
           />
           <Input
-            placeholder="Filter by camera..."
+            placeholder="Filter by camera description..."
             value={cameraFilter}
             onChange={setCameraFilter}
             className="sm:w-48"
@@ -211,26 +183,32 @@ const EventTable: React.FC<EventTableProps> = ({ token }) => {
             <thead className="bg-secondary-50 border-b border-secondary-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                  Timestamp
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
                   Person ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                  Camera ID
+                  Camera Description
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                  Event Type
+                  Zone Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
-                  Dwell Duration
+                  Total Dwell Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                  Avg Dwell Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                  Event Count
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">
+                  Created At
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-secondary-200">
               {paginatedEvents.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="text-secondary-500">
                       <svg className="mx-auto h-12 w-12 text-secondary-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -241,26 +219,32 @@ const EventTable: React.FC<EventTableProps> = ({ token }) => {
                   </td>
                 </tr>
               ) : (
-                paginatedEvents.map((event) => (
-                  <tr key={event.id} className="hover:bg-secondary-50 transition-colors duration-150">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900">
-                      {formatTimestamp(event.timestamp)}
-                    </td>
+                paginatedEvents.map((event, index) => (
+                  <tr key={`${event.person_id}-${event.camera_description}-${index}`} className="hover:bg-secondary-50 transition-colors duration-150">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-secondary-900">
                       {event.person_id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
-                        {event.camera_id}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getEventTypeColor(event.event_type)}`}>
-                        {event.event_type}
+                        {event.camera_description}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900">
-                      {formatDwellDuration(event.dwell_duration)}
+                      {event.zone_name || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900">
+                      {formatDwellTime(event.total_dwell_time)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900">
+                      {formatDwellTimeSeconds(event.avg_dwell_time)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-800">
+                        {event.event_count}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900">
+                      {formatTimestamp(event.created_at)}
                     </td>
                   </tr>
                 ))
@@ -274,7 +258,7 @@ const EventTable: React.FC<EventTableProps> = ({ token }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <span className="text-sm text-secondary-700">
-            Showing {page * rowsPerPage + 1} to {Math.min((page + 1) * rowsPerPage, filteredEvents.length)} of {filteredEvents.length} results
+            Showing {page * rowsPerPage + 1} to {Math.min((page + 1) * rowsPerPage, totalCount)} of {totalCount} results
           </span>
         </div>
         
@@ -299,11 +283,11 @@ const EventTable: React.FC<EventTableProps> = ({ token }) => {
               Previous
             </button>
             <span className="px-3 py-1 text-sm text-secondary-700">
-              {page + 1} of {Math.ceil(filteredEvents.length / rowsPerPage)}
+              {page + 1} of {totalPages}
             </span>
             <button
               onClick={() => handleChangePage(page + 1)}
-              disabled={page >= Math.ceil(filteredEvents.length / rowsPerPage) - 1}
+              disabled={page >= totalPages - 1}
               className="px-3 py-1 text-sm border border-secondary-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-secondary-50"
             >
               Next

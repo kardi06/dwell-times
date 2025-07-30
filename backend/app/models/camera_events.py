@@ -62,26 +62,36 @@ class CameraEvent(Base):
     
     # Calculated fields for dwell time analysis
     session_id = Column(String(100), nullable=True, index=True)
-    dwell_duration = Column(Integer, nullable=True)  # Duration in seconds
+    dwell_duration = Column(Integer, nullable=True)  # Duration in seconds (legacy)
+    dwell_time = Column(Integer, nullable=True, index=True)  # Pre-calculated dwell time in seconds
     is_entry = Column(Boolean, nullable=True, index=True)
     is_exit = Column(Boolean, nullable=True, index=True)
+    
+    # Camera description for analytics
+    camera_description = Column(String(100), nullable=True, index=True)
+    zone_name = Column(String(100), nullable=True, index=True)
     
     # Processed timestamp for analytics
     processed_timestamp = Column(DateTime(timezone=True), nullable=True, index=True)
     
     # Metadata
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     
     # Raw data storage for debugging
     raw_data = Column(Text, nullable=True)
     
-    # Composite indexes for performance
+    # Composite indexes for performance - optimized for GROUP BY queries
     __table_args__ = (
         Index('idx_person_camera_timestamp', 'person_id', 'camera_id', 'processed_timestamp'),
         Index('idx_session_timestamp', 'session_id', 'processed_timestamp'),
         Index('idx_event_type', 'event_type'),
         Index('idx_frame_time', 'frame_time'),
+        Index('idx_person_camera_description', 'person_id', 'camera_description'),
+        Index('idx_dwell_time_analytics', 'person_id', 'camera_description', 'dwell_time'),
+        Index('idx_created_at_analytics', 'created_at'),
+        Index('idx_camera_description_filter', 'camera_description'),
+        Index('idx_zone_name_filter', 'zone_name'),
     )
 
 class PersonSession(Base):
