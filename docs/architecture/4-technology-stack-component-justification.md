@@ -3,7 +3,9 @@
 **Frontend:**
 
 - **React + Vite + TypeScript:**\
-  Modern, fast developer workflow, scalable for complex UI. Broad ecosystem for UI kits (Material UI, Chakra UI), and charting (Recharts, ECharts).
+  Modern, fast developer workflow, scalable for complex UI. Broad ecosystem for UI kits and charting (Recharts, ECharts).
+- **Tailwind CSS:**\
+  Utility-first CSS framework for rapid UI development, consistent design system, and responsive design. Provides pre-built components and design tokens for modern, beautiful interfaces.
 - **Charting/UI Libraries:**\
   Enable rich, interactive data visualization with responsive design and theme support.
 

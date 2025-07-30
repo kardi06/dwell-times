@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Index
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Index, BigInteger, Float
 from sqlalchemy.sql import func
 from ..core.database import Base
 
@@ -6,16 +6,68 @@ class CameraEvent(Base):
     __tablename__ = "camera_events"
     
     id = Column(Integer, primary_key=True, index=True)
-    timestamp = Column(DateTime(timezone=True), nullable=False, index=True)
+    
+    # Core fields from your CSV
     person_id = Column(String(100), nullable=False, index=True)
-    camera_id = Column(String(50), nullable=False, index=True)
-    event_type = Column(String(20), nullable=False, index=True)  # 'entry', 'exit', etc.
+    retain = Column(Boolean, nullable=True)
+    appearance_labeled_ou_event = Column(String(50), nullable=True)
+    event_type = Column(String(50), nullable=False, index=True)
+    event_id = Column(String(100), nullable=True, index=True)
+    
+    # Timestamp fields from your CSV
+    utc_time_recorded = Column(BigInteger, nullable=True)  # Unix timestamp
+    utc_time_recorded_readable = Column(String(100), nullable=True)
+    appearance_utc_time_s = Column(BigInteger, nullable=True)
+    utc_time_s = Column(BigInteger, nullable=True)
+    utc_time_e = Column(BigInteger, nullable=True)
+    utc_time_e_first_frame_last = Column(BigInteger, nullable=True)
+    
+    # Frame information
+    first_frame = Column(Integer, nullable=True)
+    last_frame_attributes = Column(String(100), nullable=True)
+    
+    # Camera information
+    camera_id = Column(String(100), nullable=False, index=True)
+    camera_de_node_id = Column(String(100), nullable=True)
+    
+    # Analysis fields
+    analysis_m_record_face = Column(Boolean, nullable=True)
+    matching_camera = Column(Boolean, nullable=True)
+    camera_grc = Column(String(100), nullable=True)
+    camera_grc_zone_name = Column(String(100), nullable=True)
+    
+    # Zone information
+    zone_id = Column(String(100), nullable=True)
+    zone_verific_face_score = Column(Float, nullable=True)
+    
+    # Frame details
+    frame_id = Column(Integer, nullable=True)
+    frame_time = Column(BigInteger, nullable=True)
+    
+    # Bounding box coordinates
+    bbox_x1 = Column(Integer, nullable=True)
+    bbox_y1 = Column(Integer, nullable=True)
+    bbox_x2 = Column(Integer, nullable=True)
+    bbox_y2 = Column(Integer, nullable=True)
+    
+    # Watchlist information
+    watchlist_ty = Column(String(50), nullable=True)
+    watchlist_d = Column(String(100), nullable=True)
+    watchlist_g_match = Column(String(50), nullable=True)
+    
+    # Demographics
+    out_age_group = Column(String(50), nullable=True)
+    gender = Column(String(20), nullable=True)
+    out_liveness = Column(String(50), nullable=True)
     
     # Calculated fields for dwell time analysis
     session_id = Column(String(100), nullable=True, index=True)
     dwell_duration = Column(Integer, nullable=True)  # Duration in seconds
     is_entry = Column(Boolean, nullable=True, index=True)
     is_exit = Column(Boolean, nullable=True, index=True)
+    
+    # Processed timestamp for analytics
+    processed_timestamp = Column(DateTime(timezone=True), nullable=True, index=True)
     
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -26,8 +78,10 @@ class CameraEvent(Base):
     
     # Composite indexes for performance
     __table_args__ = (
-        Index('idx_person_camera_timestamp', 'person_id', 'camera_id', 'timestamp'),
-        Index('idx_session_timestamp', 'session_id', 'timestamp'),
+        Index('idx_person_camera_timestamp', 'person_id', 'camera_id', 'processed_timestamp'),
+        Index('idx_session_timestamp', 'session_id', 'processed_timestamp'),
+        Index('idx_event_type', 'event_type'),
+        Index('idx_frame_time', 'frame_time'),
     )
 
 class PersonSession(Base):

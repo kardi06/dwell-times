@@ -390,3 +390,796 @@ The documents are now ready for easier navigation and maintenance, with each sec
 
 ---
 
+_**User**_
+
+create-story to enchace @LoginForm.tsx and @Dashboard.tsx component, to make beauty ui, modern and responsive
+
+---
+
+_**Assistant**_
+
+I'll create a user story to enhance the LoginForm and Dashboard components with beautiful, modern, and responsive UI. Let me first examine the current components and then create a comprehensive story.
+
+
+---
+
+Read file: web-bundles/agents/sm.txt
+
+---
+
+Let me find the create-next-story task to understand the complete process:
+
+
+---
+
+<details>
+            <summary>Grep search for "==================== START: \.bmad-core/tasks/create-next-story\.md ====================" • **4** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/teams/team-ide-minimal.txt` | L2977 | `==================== START: .bmad-core/tasks/create-next-story.md ====================` |
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/teams/team-all.txt` | L9004 | `==================== START: .bmad-core/tasks/create-next-story.md ====================` |
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/agents/sm.txt` | L87 | `==================== START: .bmad-core/tasks/create-next-story.md ====================` |
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/agents/bmad-master.txt` | L1513 | `==================== START: .bmad-core/tasks/create-next-story.md ====================` |
+
+</details>
+
+---
+
+Read file: web-bundles/agents/sm.txt
+
+---
+
+Now let me find the story template:
+
+
+---
+
+<details>
+            <summary>Grep search for "==================== START: \.bmad-core/templates/story-tmpl\.yaml ====================" • **8** files</summary>
+        
+| File | Line | Match |
+|------|------|-------|
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/teams/team-no-ui.txt` | L7970 | `==================== START: .bmad-core/templates/story-tmpl.yaml ====================` |
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/teams/team-ide-minimal.txt` | L2208 | `==================== START: .bmad-core/templates/story-tmpl.yaml ====================` |
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/teams/team-fullstack.txt` | L8430 | `==================== START: .bmad-core/templates/story-tmpl.yaml ====================` |
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/teams/team-all.txt` | L8272 | `==================== START: .bmad-core/templates/story-tmpl.yaml ====================` |
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/agents/sm.txt` | L371 | `==================== START: .bmad-core/templates/story-tmpl.yaml ====================` |
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/agents/qa.txt` | L242 | `==================== START: .bmad-core/templates/story-tmpl.yaml ====================` |
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/agents/po.txt` | L597 | `==================== START: .bmad-core/templates/story-tmpl.yaml ====================` |
+| `file:///d%3A/captain%20garuda/work/softnet/MAP/map_dwell_time/web-bundles/agents/bmad-master.txt` | L5914 | `==================== START: .bmad-core/templates/story-tmpl.yaml ====================` |
+
+</details>
+
+---
+
+Read file: web-bundles/agents/sm.txt
+
+---
+
+Now let me check the current project structure and existing stories to understand the context:
+
+
+---
+
+<details>
+            <summary>Listed directory docs/stories • **3** results</summary>
+        
+| Name |
+|-------|
+| 📄 `mvp-core-analytics-dashboard-implementation.md` |
+| 📄 `data-processing-analytics-engine.md` |
+| 📄 `project-setup-development-environment.md` |
+
+</details>
+
+---
+
+Let me check the PRD to understand the UI/UX requirements:
+
+
+---
+
+Read file: docs/prd/6-features-scope.md
+
+---
+
+Let me also check the architecture documents for UI/UX guidance:
+
+
+---
+
+Read file: docs/architecture/6-frontend-user-interface-overview.md
+
+---
+
+Now let me check the current project structure to understand the file organization:
+
+
+---
+
+<details>
+            <summary>Listed directory frontend/src • **9** results</summary>
+        
+| Name |
+|-------|
+| 📄 `App.tsx` |
+| 📁 `components` |
+| 📄 `setupTests.ts` |
+| 📁 `__tests__` |
+| 📁 `assets` |
+| 📄 `main.tsx` |
+| 📄 `vite-env.d.ts` |
+| 📄 `index.css` |
+| 📄 `App.css` |
+
+</details>
+
+---
+
+<details>
+            <summary>Listed directory frontend/src/components • **3** results</summary>
+        
+| Name |
+|-------|
+| 📁 `Dashboard` |
+| 📁 `FileUpload` |
+| 📁 `Auth` |
+
+</details>
+
+---
+
+Now I'll create a comprehensive user story for enhancing the UI components. Based on the current state and requirements, I'll create story 1.4 (assuming 1.1-1.3 are the existing stories):
+
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+I'm creating a new user story for enhancing the LoginForm and Dashboard components with modern, beautiful, and responsive UI design
+
+**Chunk 1**
+Lines added: 175, lines removed: 1
+
+```diff
+@@ -1,1 +1,175 @@
+- 
++ # Story 1.4: UI Enhancement - Modern Responsive Design
++ 
++ ## Status
++ Draft
++ 
++ ## Story
++ **As a** user of the Dwell-Insight analytics platform,
++ **I want** a beautiful, modern, and responsive user interface for the login and dashboard components,
++ **so that** I have an engaging and professional user experience that works seamlessly across all devices.
++ 
++ ## Acceptance Criteria
++ 1. **Login Form Enhancement:**
++    - [ ] Modern, clean design with gradient backgrounds and subtle animations
++    - [ ] Responsive layout that works on mobile, tablet, and desktop
++    - [ ] Improved visual hierarchy with better typography and spacing
++    - [ ] Enhanced form validation with real-time feedback
++    - [ ] Loading states with smooth animations
++    - [ ] Error handling with user-friendly messages
++    - [ ] Accessibility improvements (ARIA labels, keyboard navigation)
++ 
++ 2. **Dashboard Enhancement:**
++    - [ ] Modern card-based layout with subtle shadows and hover effects
++    - [ ] Responsive grid system that adapts to different screen sizes
++    - [ ] Enhanced KPI cards with better visual design and animations
++    - [ ] Improved tab navigation with better visual feedback
++    - [ ] Modern file upload area with drag-and-drop improvements
++    - [ ] Better spacing, typography, and color scheme
++    - [ ] Loading states and skeleton screens for better UX
++    - [ ] Mobile-first responsive design
++ 
++ 3. **Design System Implementation:**
++    - [ ] Consistent color palette with primary, secondary, and accent colors
++    - [ ] Typography scale with proper font weights and sizes
++    - [ ] Spacing system using consistent margins and padding
++    - [ ] Component library with reusable UI elements
++    - [ ] Dark/light theme support (optional for future)
++ 
++ 4. **Performance & Accessibility:**
++    - [ ] Optimized bundle size with tree-shaking
++    - [ ] Proper semantic HTML structure
++    - [ ] Keyboard navigation support
++    - [ ] Screen reader compatibility
++    - [ ] WCAG 2.1 AA compliance
++ 
++ ## Tasks / Subtasks
++ - [ ] **Task 1: Design System Setup (AC: 3)**
++   - [ ] Create design tokens for colors, typography, and spacing
++   - [ ] Set up theme configuration with Material-UI theme provider
++   - [ ] Create reusable component variants (buttons, cards, inputs)
++   - [ ] Implement responsive breakpoints and grid system
++ 
++ - [ ] **Task 2: Login Form Redesign (AC: 1)**
++   - [ ] Redesign login form with modern gradient background
++   - [ ] Implement enhanced form validation with real-time feedback
++   - [ ] Add smooth loading animations and transitions
++   - [ ] Improve error message display and accessibility
++   - [ ] Add responsive design for mobile and tablet layouts
++ 
++ - [ ] **Task 3: Dashboard Layout Enhancement (AC: 2)**
++   - [ ] Redesign dashboard header with modern styling
++   - [ ] Enhance KPI cards with better visual hierarchy
++   - [ ] Improve tab navigation with active states and animations
++   - [ ] Redesign file upload area with better drag-and-drop UX
++   - [ ] Implement responsive grid system for dashboard content
++ 
++ - [ ] **Task 4: Component Library Development (AC: 3)**
++   - [ ] Create reusable Button component with variants
++   - [ ] Create Card component with different styles
++   - [ ] Create Input/TextField components with validation states
++   - [ ] Create Loading and Skeleton components
++   - [ ] Create Alert/Notification components
++ 
++ - [ ] **Task 5: Responsive Design Implementation (AC: 1, 2)**
++   - [ ] Implement mobile-first responsive breakpoints
++   - [ ] Optimize layouts for tablet and mobile devices
++   - [ ] Add touch-friendly interactions for mobile
++   - [ ] Test and optimize for different screen sizes
++ 
++ - [ ] **Task 6: Accessibility & Performance (AC: 4)**
++   - [ ] Add proper ARIA labels and semantic HTML
++   - [ ] Implement keyboard navigation support
++   - [ ] Optimize bundle size and loading performance
++   - [ ] Add screen reader compatibility
++   - [ ] Conduct accessibility testing
++ 
++ ## Dev Notes
++ 
++ ### Previous Story Insights
++ - Current components use basic Material-UI styling
++ - File upload functionality is working but needs visual enhancement
++ - Authentication flow is functional but lacks modern design
++ - Dashboard layout is functional but needs better visual hierarchy
++ 
++ ### Data Models
++ - No new data models required for this story
++ - Existing authentication and analytics data structures remain unchanged
++ - Component props interfaces may need updates for new styling props
++ 
++ ### API Specifications
++ - No new API endpoints required
++ - Existing authentication and analytics endpoints remain unchanged
++ - All current API calls will continue to work with enhanced UI
++ 
++ ### Component Specifications
++ **LoginForm Component:**
++ - Location: `frontend/src/components/Auth/LoginForm.tsx`
++ - Props: `onLogin: (token: string) => void`
++ - New styling props: `variant?: 'default' | 'modern'`, `theme?: 'light' | 'dark'`
++ - Enhanced error handling and loading states
++ - Responsive design with mobile-first approach
++ 
++ **Dashboard Component:**
++ - Location: `frontend/src/components/Dashboard/Dashboard.tsx`
++ - Props: `token: string`, `onLogout: () => void`
++ - New layout system with responsive grid
++ - Enhanced KPI cards with animations
++ - Improved tab navigation with better visual feedback
++ 
++ **New Component Library:**
++ - Location: `frontend/src/components/ui/`
++ - Components: Button, Card, Input, Loading, Alert, Skeleton
++ - Theme-aware components with consistent styling
++ - Reusable across the application
++ 
++ ### File Locations
++ - `frontend/src/components/Auth/LoginForm.tsx` - Enhanced login form
++ - `frontend/src/components/Dashboard/Dashboard.tsx` - Enhanced dashboard
++ - `frontend/src/components/ui/` - New component library
++ - `frontend/src/theme/` - Theme configuration and design tokens
++ - `frontend/src/styles/` - Global styles and utilities
++ 
++ ### Testing Requirements
++ - Unit tests for all new UI components
++ - Visual regression tests for design consistency
++ - Accessibility tests using axe-core
++ - Responsive design tests across different screen sizes
++ - Performance tests for bundle size and loading times
++ 
++ ### Technical Constraints
++ - Must maintain compatibility with existing Material-UI components
++ - Should not break existing functionality
++ - Must follow React best practices and hooks
++ - Should be optimized for production builds
++ - Must support TypeScript for type safety
++ 
++ ### Architecture References
++ - [Source: docs/architecture/6-frontend-user-interface-overview.md#User Experience (UX) Principles]
++ - [Source: docs/architecture/4-technology-stack-component-justification.md#Frontend]
++ - [Source: docs/prd/6-features-scope.md#MVP (v0.1)]
++ 
++ ## Testing
++ - Unit tests for all new UI components using React Testing Library
++ - Visual regression tests using Storybook or similar
++ - Accessibility tests using axe-core
++ - Responsive design tests using browser dev tools
++ - Performance tests for bundle size optimization
++ 
++ ## Change Log
++ | Date | Version | Description | Author |
++ |------|---------|-------------|--------|
++ | 2025-01-29 | 1.0 | Initial story creation | SM |
++ 
++ ## Dev Agent Record
++ 
++ ### Agent Model Used
++ Claude Sonnet 4
++ 
++ ### Debug Log References
++ - None yet
++ 
++ ### Completion Notes List
++ - None yet
++ 
++ ### File List
++ - None yet 
+```
+
+</details>
+
+---
+
+Perfect! I've created a comprehensive user story for enhancing the LoginForm and Dashboard components with modern, beautiful, and responsive UI design. Here's a summary of what I've created:
+
+## Story 1.4: UI Enhancement - Modern Responsive Design
+
+### Key Features Covered:
+
+**1. Login Form Enhancement:**
+- Modern gradient backgrounds and subtle animations
+- Responsive layout for all devices
+- Enhanced form validation with real-time feedback
+- Improved accessibility and keyboard navigation
+
+**2. Dashboard Enhancement:**
+- Modern card-based layout with hover effects
+- Responsive grid system
+- Enhanced KPI cards with animations
+- Improved tab navigation and file upload area
+
+**3. Design System Implementation:**
+- Consistent color palette and typography
+- Reusable component library
+- Theme support for future dark/light modes
+
+**4. Performance & Accessibility:**
+- Optimized bundle size
+- WCAG 2.1 AA compliance
+- Screen reader compatibility
+
+### Technical Approach:
+- **6 Main Tasks** with detailed subtasks
+- **Component Library** creation for reusability
+- **Theme System** using Material-UI
+- **Responsive Design** with mobile-first approach
+- **Accessibility** improvements throughout
+
+### File Structure:
+- Enhanced existing components: `LoginForm.tsx`, `Dashboard.tsx`
+- New component library: `frontend/src/components/ui/`
+- Theme configuration: `frontend/src/theme/`
+- Global styles: `frontend/src/styles/`
+
+The story is now ready for development and includes all necessary technical context from the architecture documents, ensuring the developer has complete guidance for implementation. The story follows the BMad-Method framework with proper acceptance criteria, tasks, and technical specifications.
+
+---
+
+_**User**_
+
+we will use tailwind for story 1.4 , change it in architecture to
+
+---
+
+_**Assistant**_
+
+I'll update the architecture document to reflect the use of Tailwind CSS for story 1.4. Let me first check the current architecture document and then update it.
+
+
+---
+
+Read file: docs/architecture/4-technology-stack-component-justification.md
+
+---
+
+Now let me update the architecture document to include Tailwind CSS in the frontend technology stack:
+
+
+---
+
+<details><summary>Edit file: docs/architecture/4-technology-stack-component-justification.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 3, lines removed: 1
+
+```diff
+@@ -4,5 +4,7 @@
+  
+  - **React + Vite + TypeScript:**\
+-   Modern, fast developer workflow, scalable for complex UI. Broad ecosystem for UI kits (Material UI, Chakra UI), and charting (Recharts, ECharts).
++   Modern, fast developer workflow, scalable for complex UI. Broad ecosystem for UI kits and charting (Recharts, ECharts).
++ - **Tailwind CSS:**\
++   Utility-first CSS framework for rapid UI development, consistent design system, and responsive design. Provides pre-built components and design tokens for modern, beautiful interfaces.
+  - **Charting/UI Libraries:**\
+    Enable rich, interactive data visualization with responsive design and theme support.
+```
+
+</details>
+
+---
+
+Now let me also update the frontend architecture overview to reflect the Tailwind CSS approach:
+
+
+---
+
+<details><summary>Edit file: docs/architecture/6-frontend-user-interface-overview.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 2, lines removed: undefined
+
+```diff
+@@ -28,4 +28,6 @@
+  - **Accessibility:**\
+    Supports keyboard navigation and screen readers.
++ - **Design System:**\
++   Consistent styling using Tailwind CSS utility classes and custom design tokens for maintainable, scalable UI components.
+  
+  **Extensibility:**
+```
+
+</details>
+
+---
+
+Now let me update the story to reflect the Tailwind CSS approach instead of Material-UI:
+
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 1, lines removed: 1
+
+```diff
+@@ -106,5 +106,5 @@
+  - Location: `frontend/src/components/Auth/LoginForm.tsx`
+  - Props: `onLogin: (token: string) => void`
+- - New styling props: `variant?: 'default' | 'modern'`, `theme?: 'light' | 'dark'`
++ - Styling: Tailwind CSS utility classes with custom design tokens
+  - Enhanced error handling and loading states
+  - Responsive design with mobile-first approach
+```
+
+**Chunk 2**
+Lines added: 4, lines removed: 4
+
+```diff
+@@ -113,13 +113,13 @@
+  - Location: `frontend/src/components/Dashboard/Dashboard.tsx`
+  - Props: `token: string`, `onLogout: () => void`
+- - New layout system with responsive grid
+- - Enhanced KPI cards with animations
++ - Styling: Tailwind CSS with responsive grid system
++ - Enhanced KPI cards with animations using Tailwind classes
+  - Improved tab navigation with better visual feedback
+  
+  **New Component Library:**
+  - Location: `frontend/src/components/ui/`
+  - Components: Button, Card, Input, Loading, Alert, Skeleton
+- - Theme-aware components with consistent styling
+- - Reusable across the application
++ - Styling: Tailwind CSS utility classes with consistent design tokens
++ - Reusable across the application with Tailwind's utility-first approach
+  
+  ### File Locations
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 2, lines removed: 2
+
+```diff
+@@ -127,6 +127,6 @@
+  - `frontend/src/components/Dashboard/Dashboard.tsx` - Enhanced dashboard
+  - `frontend/src/components/ui/` - New component library
+- - `frontend/src/theme/` - Theme configuration and design tokens
+- - `frontend/src/styles/` - Global styles and utilities
++ - `frontend/src/styles/` - Global styles and Tailwind configuration
++ - `tailwind.config.js` - Tailwind CSS configuration with custom design tokens
+  
+  ### Testing Requirements
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 3, lines removed: 2
+
+```diff
+@@ -138,9 +138,10 @@
+  
+  ### Technical Constraints
+- - Must maintain compatibility with existing Material-UI components
++ - Must maintain compatibility with existing components
+  - Should not break existing functionality
+  - Must follow React best practices and hooks
+- - Should be optimized for production builds
++ - Should be optimized for production builds with Tailwind's purge feature
+  - Must support TypeScript for type safety
++ - Must use Tailwind CSS utility classes for consistent styling
+  
+  ### Architecture References
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 4, lines removed: 4
+
+```diff
+@@ -45,8 +45,8 @@
+  ## Tasks / Subtasks
+  - [ ] **Task 1: Design System Setup (AC: 3)**
+-   - [ ] Create design tokens for colors, typography, and spacing
+-   - [ ] Set up theme configuration with Material-UI theme provider
+-   - [ ] Create reusable component variants (buttons, cards, inputs)
+-   - [ ] Implement responsive breakpoints and grid system
++   - [ ] Configure Tailwind CSS with custom design tokens
++   - [ ] Set up custom color palette, typography, and spacing in tailwind.config.js
++   - [ ] Create reusable component variants using Tailwind utility classes
++   - [ ] Implement responsive breakpoints using Tailwind's responsive prefixes
+  
+  - [ ] **Task 2: Login Form Redesign (AC: 1)**
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 4, lines removed: 4
+
+```diff
+@@ -51,9 +51,9 @@
+  
+  - [ ] **Task 2: Login Form Redesign (AC: 1)**
+-   - [ ] Redesign login form with modern gradient background
++   - [ ] Redesign login form with modern gradient background using Tailwind classes
+    - [ ] Implement enhanced form validation with real-time feedback
+-   - [ ] Add smooth loading animations and transitions
+-   - [ ] Improve error message display and accessibility
+-   - [ ] Add responsive design for mobile and tablet layouts
++   - [ ] Add smooth loading animations and transitions using Tailwind's transition utilities
++   - [ ] Improve error message display and accessibility with Tailwind styling
++   - [ ] Add responsive design for mobile and tablet layouts using Tailwind breakpoints
+  
+  - [ ] **Task 3: Dashboard Layout Enhancement (AC: 2)**
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 5, lines removed: 5
+
+```diff
+@@ -58,9 +58,9 @@
+  
+  - [ ] **Task 3: Dashboard Layout Enhancement (AC: 2)**
+-   - [ ] Redesign dashboard header with modern styling
+-   - [ ] Enhance KPI cards with better visual hierarchy
+-   - [ ] Improve tab navigation with active states and animations
+-   - [ ] Redesign file upload area with better drag-and-drop UX
+-   - [ ] Implement responsive grid system for dashboard content
++   - [ ] Redesign dashboard header with modern styling using Tailwind classes
++   - [ ] Enhance KPI cards with better visual hierarchy and Tailwind card components
++   - [ ] Improve tab navigation with active states and animations using Tailwind utilities
++   - [ ] Redesign file upload area with better drag-and-drop UX and Tailwind styling
++   - [ ] Implement responsive grid system for dashboard content using Tailwind's grid utilities
+  
+  - [ ] **Task 4: Component Library Development (AC: 3)**
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 5, lines removed: 5
+
+```diff
+@@ -65,9 +65,9 @@
+  
+  - [ ] **Task 4: Component Library Development (AC: 3)**
+-   - [ ] Create reusable Button component with variants
+-   - [ ] Create Card component with different styles
+-   - [ ] Create Input/TextField components with validation states
+-   - [ ] Create Loading and Skeleton components
+-   - [ ] Create Alert/Notification components
++   - [ ] Create reusable Button component with variants using Tailwind classes
++   - [ ] Create Card component with different styles using Tailwind card utilities
++   - [ ] Create Input/TextField components with validation states using Tailwind form classes
++   - [ ] Create Loading and Skeleton components using Tailwind animation utilities
++   - [ ] Create Alert/Notification components using Tailwind alert and notification classes
+  
+  - [ ] **Task 5: Responsive Design Implementation (AC: 1, 2)**
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 4, lines removed: 4
+
+```diff
+@@ -72,8 +72,8 @@
+  
+  - [ ] **Task 5: Responsive Design Implementation (AC: 1, 2)**
+-   - [ ] Implement mobile-first responsive breakpoints
+-   - [ ] Optimize layouts for tablet and mobile devices
+-   - [ ] Add touch-friendly interactions for mobile
+-   - [ ] Test and optimize for different screen sizes
++   - [ ] Implement mobile-first responsive breakpoints using Tailwind's responsive prefixes
++   - [ ] Optimize layouts for tablet and mobile devices with Tailwind's responsive utilities
++   - [ ] Add touch-friendly interactions for mobile using Tailwind's touch utilities
++   - [ ] Test and optimize for different screen sizes using Tailwind's responsive design system
+  
+  - [ ] **Task 6: Accessibility & Performance (AC: 4)**
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 5, lines removed: 5
+
+```diff
+@@ -78,9 +78,9 @@
+  
+  - [ ] **Task 6: Accessibility & Performance (AC: 4)**
+-   - [ ] Add proper ARIA labels and semantic HTML
+-   - [ ] Implement keyboard navigation support
+-   - [ ] Optimize bundle size and loading performance
+-   - [ ] Add screen reader compatibility
+-   - [ ] Conduct accessibility testing
++   - [ ] Add proper ARIA labels and semantic HTML with Tailwind's accessibility utilities
++   - [ ] Implement keyboard navigation support using Tailwind's focus utilities
++   - [ ] Optimize bundle size and loading performance with Tailwind's purge feature
++   - [ ] Add screen reader compatibility with proper semantic HTML and ARIA attributes
++   - [ ] Conduct accessibility testing with focus on Tailwind's accessibility features
+  
+  ## Dev Notes
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: docs/stories/1.4.ui-enhancement-modern-responsive-design.md</summary>
+
+undefined
+
+**Chunk 1**
+Lines added: 2, lines removed: 1
+
+```diff
+@@ -87,8 +87,9 @@
+  
+  ### Previous Story Insights
+- - Current components use basic Material-UI styling
++ - Current components use basic styling without a design system
+  - File upload functionality is working but needs visual enhancement
+  - Authentication flow is functional but lacks modern design
+  - Dashboard layout is functional but needs better visual hierarchy
++ - Need to transition from basic styling to Tailwind CSS utility-first approach
+  
+  ### Data Models
+```
+
+</details>
+
+---
+
+Perfect! I've successfully updated both the architecture document and the user story to reflect the use of Tailwind CSS instead of Material-UI. Here's a summary of the changes made:
+
+## Architecture Updates:
+
+### 1. Technology Stack Document (`docs/architecture/4-technology-stack-component-justification.md`)
+- **Added Tailwind CSS** to the frontend technology stack
+- **Removed Material-UI references** from the UI kits section
+- **Added justification** for Tailwind CSS as a utility-first CSS framework
+
+### 2. Frontend Architecture Overview (`docs/architecture/6-frontend-user-interface-overview.md`)
+- **Added Design System principle** emphasizing Tailwind CSS utility classes and custom design tokens
+- **Updated UX principles** to include consistent styling approach
+
+## Story Updates:
+
+### 1. Component Specifications
+- **Updated LoginForm and Dashboard components** to use Tailwind CSS utility classes
+- **Removed Material-UI theme references** and replaced with Tailwind configuration
+- **Updated component library approach** to use Tailwind's utility-first methodology
+
+### 2. File Locations
+- **Removed Material-UI theme folder** references
+- **Added Tailwind configuration** file (`tailwind.config.js`)
+- **Updated styling approach** to use Tailwind's configuration system
+
+### 3. Technical Constraints
+- **Removed Material-UI compatibility** requirements
+- **Added Tailwind CSS utility class** requirements
+- **Updated performance optimization** to use Tailwind's purge feature
+
+### 4. Tasks and Subtasks
+- **Updated all 6 main tasks** to use Tailwind CSS approach:
+  - Design System Setup: Tailwind configuration and custom tokens
+  - Login Form Redesign: Tailwind classes for gradients and animations
+  - Dashboard Enhancement: Tailwind grid system and card components
+  - Component Library: Tailwind utility-based components
+  - Responsive Design: Tailwind's responsive prefixes and utilities
+  - Accessibility: Tailwind's accessibility utilities and focus management
+
+### 5. Previous Story Insights
+- **Updated context** to reflect transition from basic styling to Tailwind CSS
+- **Removed Material-UI references** and added Tailwind adoption note
+
+The story is now properly aligned with the Tailwind CSS approach, providing clear guidance for implementing modern, beautiful, and responsive UI components using Tailwind's utility-first methodology. The architecture documents now accurately reflect the technology choice and provide the necessary context for development.
+
+---
+

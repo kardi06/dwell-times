@@ -16,7 +16,11 @@ class CSVProcessor:
     VALID_EVENT_TYPES = ['entry', 'exit', 'loiter', 'crowd', 'appearance']
     
     # Map your timestamp columns to our expected format
-    TIMESTAMP_COLUMNS = ['timestamp', 'utc_time_re', 'utc_time_st', 'utc_time_e', 'frame_time', 'utc_time_received', 'utc_time_start', 'utc_time_end']
+    TIMESTAMP_COLUMNS = [
+        'timestamp', 'utc_time_re', 'utc_time_st', 'utc_time_e', 'frame_time',
+        'utc_time_received', 'utc_time_start', 'utc_time_end',
+        'utc_time_recorded', 'utc_time_s', 'frame_time'
+    ]
     
     def __init__(self, db: Session):
         self.db = db
@@ -213,14 +217,72 @@ class CSVProcessor:
         events = []
         
         for _, row in df.iterrows():
+            # Convert timestamp to processed_timestamp
+            processed_timestamp = None
+            if 'timestamp' in row and pd.notna(row['timestamp']):
+                processed_timestamp = row['timestamp']
+            
             event = CameraEvent(
-                timestamp=row['timestamp'],
-                person_id=str(row['person_id']),
-                camera_id=str(row['camera_id']),
-                event_type=row['event_type'],
+                # Core fields
+                person_id=str(row.get('person_id', '')),
+                retain=row.get('retain', False),
+                appearance_labeled_ou_event=row.get('appearance_labeled_ou_event'),
+                event_type=str(row.get('event_type', '')),
+                event_id=row.get('event_id'),
+                
+                # Timestamp fields
+                utc_time_recorded=row.get('utc_time_recorded'),
+                utc_time_recorded_readable=row.get('utc_time_recorded_readable'),
+                appearance_utc_time_s=row.get('appearance_utc_time_s'),
+                utc_time_s=row.get('utc_time_s'),
+                utc_time_e=row.get('utc_time_e'),
+                utc_time_e_first_frame_last=row.get('utc_time_e_first_frame_last'),
+                
+                # Frame information
+                first_frame=row.get('first_frame'),
+                last_frame_attributes=row.get('last_frame_attributes'),
+                
+                # Camera information
+                camera_id=str(row.get('camera_id', '')),
+                camera_de_node_id=row.get('camera_de_node_id'),
+                
+                # Analysis fields
+                analysis_m_record_face=row.get('analysis_m_record_face'),
+                matching_camera=row.get('matching_camera'),
+                camera_grc=row.get('camera_grc'),
+                camera_grc_zone_name=row.get('camera_grc_zone_name'),
+                
+                # Zone information
+                zone_id=row.get('zone_id'),
+                zone_verific_face_score=row.get('zone_verific_face_score'),
+                
+                # Frame details
+                frame_id=row.get('frame_id'),
+                frame_time=row.get('frame_time'),
+                
+                # Bounding box coordinates
+                bbox_x1=row.get('bbox_x1'),
+                bbox_y1=row.get('bbox_y1'),
+                bbox_x2=row.get('bbox_x2'),
+                bbox_y2=row.get('bbox_y2'),
+                
+                # Watchlist information
+                watchlist_ty=row.get('watchlist_ty'),
+                watchlist_d=row.get('watchlist_d'),
+                watchlist_g_match=row.get('watchlist_g_match'),
+                
+                # Demographics
+                out_age_group=row.get('out_age_group'),
+                gender=row.get('gender'),
+                out_liveness=row.get('out_liveness'),
+                
+                # Calculated fields
                 session_id=row.get('session_id'),
                 is_entry=row.get('is_entry'),
                 is_exit=row.get('is_exit'),
+                processed_timestamp=processed_timestamp,
+                
+                # Raw data
                 raw_data=row.to_json()
             )
             events.append(event)

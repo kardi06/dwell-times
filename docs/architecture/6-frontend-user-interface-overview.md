@@ -27,6 +27,8 @@
   Asynchronous data loading with progress indicators for heavy queries/exports.
 - **Accessibility:**\
   Supports keyboard navigation and screen readers.
+- **Design System:**\
+  Consistent styling using Tailwind CSS utility classes and custom design tokens for maintainable, scalable UI components.
 
 **Extensibility:**
 

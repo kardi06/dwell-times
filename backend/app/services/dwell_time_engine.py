@@ -24,11 +24,11 @@ class DwellTimeEngine:
             # Get events for the date range
             query = self.db.query(CameraEvent)
             if start_date:
-                query = query.filter(CameraEvent.timestamp >= start_date)
+                query = query.filter(CameraEvent.processed_timestamp >= start_date)
             if end_date:
-                query = query.filter(CameraEvent.timestamp <= end_date)
+                query = query.filter(CameraEvent.processed_timestamp <= end_date)
             
-            events = query.order_by(CameraEvent.person_id, CameraEvent.camera_id, CameraEvent.timestamp).all()
+            events = query.order_by(CameraEvent.person_id, CameraEvent.camera_id, CameraEvent.processed_timestamp).all()
             
             if not events:
                 logger.warning("No events found for dwell time calculation")
@@ -38,7 +38,7 @@ class DwellTimeEngine:
             events_df = pd.DataFrame([
                 {
                     'id': event.id,
-                    'timestamp': event.timestamp,
+                    'timestamp': event.processed_timestamp,
                     'person_id': event.person_id,
                     'camera_id': event.camera_id,
                     'event_type': event.event_type,
@@ -161,8 +161,8 @@ class DwellTimeEngine:
                 and_(
                     CameraEvent.person_id == session['person_id'],
                     CameraEvent.camera_id == session['camera_id'],
-                    CameraEvent.timestamp >= session['entry_time'],
-                    CameraEvent.timestamp <= session['exit_time']
+                    CameraEvent.processed_timestamp >= session['entry_time'],
+                    CameraEvent.processed_timestamp <= session['exit_time']
                 )
             ).all()
             
