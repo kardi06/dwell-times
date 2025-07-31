@@ -14,12 +14,14 @@ interface DwellTimeBarChartProps {
   data: ChartDataPoint[];
   title?: string;
   isLoading?: boolean;
+  metricType?: 'total' | 'average';
 }
 
 export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
   data,
   title = 'Average Dwell Time by Gender',
-  isLoading = false
+  isLoading = false,
+  metricType = 'average'
 }) => {
   if (isLoading) {
     return (
@@ -41,24 +43,29 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
   const genderData = data.reduce((acc, item) => {
     const gender = item.gender?.toLowerCase() || 'other';
     if (!acc[gender]) {
-      acc[gender] = { total: 0, count: 0 };
+      acc[gender] = { total: 0, count: 0, totalDwell: 0 };
     }
     acc[gender].total += item.avg_dwell_time;
     acc[gender].count += 1;
+    acc[gender].totalDwell += item.total_dwell_time;
     return acc;
-  }, {} as Record<string, { total: number; count: number }>);
+  }, {} as Record<string, { total: number; count: number; totalDwell: number }>);
 
-  // Calculate average dwell time by gender
+  // Calculate dwell time by gender based on metric type
   const chartData = {
     labels: Object.keys(genderData).map(gender => 
       gender.charAt(0).toUpperCase() + gender.slice(1)
     ),
     datasets: [
       {
-        label: 'Average Dwell Time (Hours)',
-        data: Object.values(genderData).map(({ total, count }) => 
-          (total / count) / 3600 // Convert seconds to hours
-        ),
+        label: metricType === 'total' ? 'Total Dwell Time (Hours)' : 'Average Dwell Time (Hours)',
+        data: Object.values(genderData).map(({ total, count, totalDwell }) => {
+          if (metricType === 'total') {
+            return totalDwell / 3600; // Convert seconds to hours
+          } else {
+            return (total / count) / 3600; // Convert seconds to hours
+          }
+        }),
         backgroundColor: [
           chartTheme.colors.male,
           chartTheme.colors.female,
@@ -81,7 +88,7 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
     plugins: {
       title: {
         display: true,
-        text: title,
+        text: metricType === 'total' ? 'Total Dwell Time by Gender' : 'Average Dwell Time by Gender',
         font: chartTheme.fonts.title,
       },
       legend: {
@@ -90,7 +97,8 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
       tooltip: {
         callbacks: {
           label: function(context: any) {
-            return `Average: ${context.parsed.x.toFixed(2)} hours`;
+            const metricLabel = metricType === 'total' ? 'Total' : 'Average';
+            return `${metricLabel}: ${context.parsed.x.toFixed(2)} hours`;
           }
         }
       }

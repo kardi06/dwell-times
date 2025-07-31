@@ -722,7 +722,9 @@ async def get_chart_data(
         
         if end_date:
             try:
+                # For end_date, set to end of day (23:59:59.999) to include all data for that day
                 end_dt = datetime.fromisoformat(end_date)
+                end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
 
@@ -731,62 +733,49 @@ async def get_chart_data(
         
         # Apply date filters
         if start_dt:
-            query = query.filter(CameraEvent.created_at >= start_dt)
+            query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
         if end_dt:
-            query = query.filter(CameraEvent.created_at <= end_dt)
+            query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
 
-        # Apply time period filtering
-        if time_period == "day":
-            # Get data for the last 24 hours
-            end_dt = datetime.now()
-            start_dt = end_dt - timedelta(days=1)
-            query = query.filter(CameraEvent.created_at >= start_dt)
-        elif time_period == "week":
-            # Get data for the last 7 days
-            end_dt = datetime.now()
-            start_dt = end_dt - timedelta(days=7)
-            query = query.filter(CameraEvent.created_at >= start_dt)
-        elif time_period == "month":
-            # Get data for the last 30 days
-            end_dt = datetime.now()
-            start_dt = end_dt - timedelta(days=30)
-            query = query.filter(CameraEvent.created_at >= start_dt)
-        elif time_period == "quarter":
-            # Get data for the last 90 days
-            end_dt = datetime.now()
-            start_dt = end_dt - timedelta(days=90)
-            query = query.filter(CameraEvent.created_at >= start_dt)
-        elif time_period == "year":
-            # Get data for the last 365 days
-            end_dt = datetime.now()
-            start_dt = end_dt - timedelta(days=365)
-            query = query.filter(CameraEvent.created_at >= start_dt)
+        # Apply time period filtering only if no specific dates are provided
+        if not start_dt and not end_dt:
+            if time_period == "day":
+                # Get data for the last 24 hours
+                end_dt = datetime.now()
+                start_dt = end_dt - timedelta(days=1)
+                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+            elif time_period == "week":
+                # Get data for the last 7 days
+                end_dt = datetime.now()
+                start_dt = end_dt - timedelta(days=7)
+                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+            elif time_period == "month":
+                # Get data for the last 30 days
+                end_dt = datetime.now()
+                start_dt = end_dt - timedelta(days=30)
+                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+            elif time_period == "quarter":
+                # Get data for the last 90 days
+                end_dt = datetime.now()
+                start_dt = end_dt - timedelta(days=90)
+                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+            elif time_period == "year":
+                # Get data for the last 365 days
+                end_dt = datetime.now()
+                start_dt = end_dt - timedelta(days=365)
+                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
 
         # Aggregate data by age group and gender
-        if metric_type == "total":
-            # Total dwell time aggregation
-            result = query.with_entities(
-                func.coalesce(CameraEvent.age_group_outcome, 'Other').label('age_group'),
-                func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
-                func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
-                func.avg(CameraEvent.dwell_time).label('avg_dwell_time'),
-                func.count(CameraEvent.id).label('event_count')
-            ).group_by(
-                func.coalesce(CameraEvent.age_group_outcome, 'Other'),
-                func.coalesce(CameraEvent.gender_outcome, 'other')
-            ).all()
-        else:
-            # Average dwell time aggregation
-            result = query.with_entities(
-                func.coalesce(CameraEvent.age_group_outcome, 'Other').label('age_group'),
-                func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
-                func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
-                func.avg(CameraEvent.dwell_time).label('avg_dwell_time'),
-                func.count(CameraEvent.id).label('event_count')
-            ).group_by(
-                func.coalesce(CameraEvent.age_group_outcome, 'Other'),
-                func.coalesce(CameraEvent.gender_outcome, 'other')
-            ).all()
+        result = query.with_entities(
+            func.coalesce(CameraEvent.age_group_outcome, 'Other').label('age_group'),
+            func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
+            func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
+            func.avg(CameraEvent.dwell_time).label('avg_dwell_time'),
+            func.count(CameraEvent.id).label('event_count')
+        ).group_by(
+            func.coalesce(CameraEvent.age_group_outcome, 'Other'),
+            func.coalesce(CameraEvent.gender_outcome, 'other')
+        ).all()
 
         # Format the results
         chart_data = []
@@ -799,11 +788,22 @@ async def get_chart_data(
                 "event_count": int(row.event_count or 0)
             })
 
+        # Add debug information
+        logger.info(f"Chart data query - time_period: {time_period}, metric_type: {metric_type}")
+        logger.info(f"Date filters - start_dt: {start_dt}, end_dt: {end_dt}")
+        logger.info(f"Found {len(chart_data)} records")
+
         return {
             "chart_data": chart_data,
             "time_period": time_period,
             "metric_type": metric_type,
-            "total_records": len(chart_data)
+            "total_records": len(chart_data),
+            "debug": {
+                "start_date": start_date,
+                "end_date": end_date,
+                "start_dt": start_dt.isoformat() if start_dt else None,
+                "end_dt": end_dt.isoformat() if end_dt else None
+            }
         }
 
     except Exception as e:

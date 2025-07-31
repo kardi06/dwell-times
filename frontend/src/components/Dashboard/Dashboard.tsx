@@ -44,6 +44,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
   const [chartLoading, setChartLoading] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('week');
   const [metricType, setMetricType] = useState<MetricType>('average');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -115,8 +116,45 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
   const fetchChartData = async () => {
     setChartLoading(true);
     try {
+      // Build query parameters
+      const params = new URLSearchParams({
+        time_period: timePeriod,
+        metric_type: metricType
+      });
+
+      // Add date parameters if selected
+      if (selectedDate) {
+        const dateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        params.append('start_date', dateStr);
+        
+        // For different time periods, calculate end date
+        let endDate = new Date(selectedDate);
+        switch (timePeriod) {
+          case 'day':
+            // Same day
+            // endDate.setDate(selectedDate.getDate() + 1);
+            break;
+          case 'week':
+            endDate.setDate(selectedDate.getDate() + 6);
+            break;
+          case 'month':
+            endDate.setMonth(selectedDate.getMonth() + 1);
+            endDate.setDate(0); // Last day of the month
+            break;
+          case 'quarter':
+            endDate.setMonth(selectedDate.getMonth() + 3);
+            endDate.setDate(0);
+            break;
+          case 'year':
+            endDate.setFullYear(selectedDate.getFullYear() + 1);
+            endDate.setDate(0);
+            break;
+        }
+        params.append('end_date', endDate.toISOString().split('T')[0]);
+      }
+
       const response = await fetch(
-        `http://localhost:8000/api/v1/analytics/chart-data?time_period=${timePeriod}&metric_type=${metricType}`,
+        `http://localhost:8000/api/v1/analytics/chart-data?${params.toString()}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -144,7 +182,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
 
   useEffect(() => {
     fetchChartData();
-  }, [timePeriod, metricType]);
+  }, [timePeriod, metricType, selectedDate]);
 
   const tabs = [
     { id: 0, name: 'Upload Data', icon: '📁', description: 'Upload camera event data' },
@@ -321,8 +359,10 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
                 <ChartFilters
                   timePeriod={timePeriod}
                   metricType={metricType}
+                  selectedDate={selectedDate}
                   onTimePeriodChange={setTimePeriod}
                   onMetricTypeChange={setMetricType}
+                  onDateChange={setSelectedDate}
                 />
 
                 {/* Charts Grid */}
@@ -332,7 +372,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
                     <DwellTimeBarChart
                       data={chartData}
                       isLoading={chartLoading}
-                      title="Average Dwell Time by Gender"
+                      metricType={metricType}
                     />
                   </Card>
 
@@ -341,7 +381,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
                     <DwellTimeLineChart
                       data={chartData}
                       isLoading={chartLoading}
-                      title="Average Dwell Time by Age and Gender"
+                      metricType={metricType}
                     />
                   </Card>
                 </div>

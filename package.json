@@ -10,5 +10,9 @@
   },
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "@types/react-datepicker": "^6.2.0",
+    "react-datepicker": "^8.4.0"
+  }
 }

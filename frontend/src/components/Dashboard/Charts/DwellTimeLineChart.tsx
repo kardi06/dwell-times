@@ -7,12 +7,14 @@ interface DwellTimeLineChartProps {
   data: ChartDataPoint[];
   title?: string;
   isLoading?: boolean;
+  metricType?: 'total' | 'average';
 }
 
 export const DwellTimeLineChart: React.FC<DwellTimeLineChartProps> = ({
   data,
   title = 'Average Dwell Time by Age and Gender',
-  isLoading = false
+  isLoading = false,
+  metricType = 'average'
 }) => {
   if (isLoading) {
     return (
@@ -43,7 +45,7 @@ export const DwellTimeLineChart: React.FC<DwellTimeLineChartProps> = ({
 
   // Aggregate data by age group and gender
   const aggregatedData = ageGroups.map(ageGroup => {
-    const ageData: Record<string, { total: number; count: number }> = {};
+    const ageData: Record<string, { total: number; count: number; totalDwell: number }> = {};
     
     data.forEach(item => {
       const itemAgeGroup = item.age_group || 'Other';
@@ -51,10 +53,11 @@ export const DwellTimeLineChart: React.FC<DwellTimeLineChartProps> = ({
       
       if (itemAgeGroup === ageGroup) {
         if (!ageData[gender]) {
-          ageData[gender] = { total: 0, count: 0 };
+          ageData[gender] = { total: 0, count: 0, totalDwell: 0 };
         }
         ageData[gender].total += item.avg_dwell_time;
         ageData[gender].count += 1;
+        ageData[gender].totalDwell += item.total_dwell_time;
       }
     });
 
@@ -65,7 +68,13 @@ export const DwellTimeLineChart: React.FC<DwellTimeLineChartProps> = ({
     label: gender.charAt(0).toUpperCase() + gender.slice(1),
     data: aggregatedData.map(({ data: ageData }) => {
       const genderData = ageData[gender];
-      return genderData ? (genderData.total / genderData.count) / 3600 : 0; // Convert to hours
+      if (!genderData) return 0;
+      
+      if (metricType === 'total') {
+        return genderData.totalDwell / 3600; // Convert to hours
+      } else {
+        return (genderData.total / genderData.count) / 3600; // Convert to hours
+      }
     }),
     borderColor: chartTheme.colors[gender as keyof typeof chartTheme.colors],
     backgroundColor: chartTheme.colors[gender as keyof typeof chartTheme.colors],
@@ -84,7 +93,7 @@ export const DwellTimeLineChart: React.FC<DwellTimeLineChartProps> = ({
     plugins: {
       title: {
         display: true,
-        text: title,
+        text: metricType === 'total' ? 'Total Dwell Time by Age and Gender' : 'Average Dwell Time by Age and Gender',
         font: chartTheme.fonts.title,
       },
       legend: {
@@ -94,6 +103,7 @@ export const DwellTimeLineChart: React.FC<DwellTimeLineChartProps> = ({
       tooltip: {
         callbacks: {
           label: function(context: any) {
+            const metricLabel = metricType === 'total' ? 'Total' : 'Average';
             return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} hours`;
           }
         }
@@ -114,7 +124,7 @@ export const DwellTimeLineChart: React.FC<DwellTimeLineChartProps> = ({
         beginAtZero: true,
         title: {
           display: true,
-          text: 'Average Dwell Time (Hours)',
+          text: metricType === 'total' ? 'Total Dwell Time (Hours)' : 'Average Dwell Time (Hours)',
           font: chartTheme.fonts.axis,
         },
         ticks: {
