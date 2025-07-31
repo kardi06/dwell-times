@@ -15,6 +15,19 @@ interface KPIMetrics {
   max_dwell_time?: number;
   total_events_processed?: number;
   cameras_with_activity?: number;
+  // Demographic metrics
+  gender_analytics?: Array<{
+    gender: string;
+    visitor_count: number;
+    total_dwell_time: number;
+    avg_dwell_time: number;
+  }>;
+  age_group_analytics?: Array<{
+    age_group: string;
+    visitor_count: number;
+    total_dwell_time: number;
+    avg_dwell_time: number;
+  }>;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
@@ -28,15 +41,32 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
     setError('');
     
     try {
-      const response = await fetch('http://localhost:8000/api/v1/analytics/kpi-metrics', {
+      // Fetch basic KPI metrics
+      const kpiResponse = await fetch('http://localhost:8000/api/v1/analytics/kpi-metrics', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setMetrics(data.kpi_metrics);
+      // Fetch demographic analytics
+      const demographicResponse = await fetch('http://localhost:8000/api/v1/analytics/demographic-insights', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (kpiResponse.ok && demographicResponse.ok) {
+        const kpiData = await kpiResponse.json();
+        const demographicData = await demographicResponse.json();
+        
+        // Combine the metrics
+        const combinedMetrics = {
+          ...kpiData.kpi_metrics,
+          gender_analytics: demographicData.demographic_insights?.filter((item: any) => item.gender) || [],
+          age_group_analytics: demographicData.demographic_insights?.filter((item: any) => item.age_group) || []
+        };
+        
+        setMetrics(combinedMetrics);
       } else {
         setError('Failed to fetch metrics');
       }

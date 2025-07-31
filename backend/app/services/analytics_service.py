@@ -3,7 +3,7 @@ import logging
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, extract, case
 from ..models.camera_events import CameraEvent, PersonSession, AnalyticsCache
 from ..core.exceptions import AnalyticsError
 import json
@@ -25,9 +25,9 @@ class AnalyticsService:
             # Base query for date filtering
             base_query = self.db.query(CameraEvent)
             if start_date:
-                base_query = base_query.filter(CameraEvent.timestamp >= start_date)
+                base_query = base_query.filter(CameraEvent.created_at >= start_date)
             if end_date:
-                base_query = base_query.filter(CameraEvent.timestamp <= end_date)
+                base_query = base_query.filter(CameraEvent.created_at <= end_date)
             
             # Total unique visitors
             unique_visitors = base_query.with_entities(
@@ -76,6 +76,201 @@ class AnalyticsService:
         except Exception as e:
             logger.error(f"KPI calculation failed: {e}")
             raise AnalyticsError(f"KPI calculation failed: {str(e)}")
+
+    def calculate_demographic_kpi_metrics(self, start_date: Optional[datetime] = None,
+                                        end_date: Optional[datetime] = None) -> Dict:
+        """Calculate demographic-based KPI metrics"""
+        logger.info("Calculating demographic KPI metrics...")
+        
+        try:
+            # Base query for date filtering
+            base_query = self.db.query(CameraEvent)
+            if start_date:
+                base_query = base_query.filter(CameraEvent.created_at >= start_date)
+            if end_date:
+                base_query = base_query.filter(CameraEvent.created_at <= end_date)
+            
+            # Demographic distribution
+            gender_stats = base_query.with_entities(
+                CameraEvent.gender_outcome,
+                func.count(func.distinct(CameraEvent.person_id)).label('visitor_count'),
+                func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
+                func.avg(CameraEvent.dwell_time).label('avg_dwell_time')
+            ).group_by(CameraEvent.gender_outcome).all()
+            
+            age_group_stats = base_query.with_entities(
+                CameraEvent.age_group_outcome,
+                func.count(func.distinct(CameraEvent.person_id)).label('visitor_count'),
+                func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
+                func.avg(CameraEvent.dwell_time).label('avg_dwell_time')
+            ).group_by(CameraEvent.age_group_outcome).all()
+            
+            # Time period analytics
+            time_period_stats = base_query.with_entities(
+                func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00').label('time_period'),
+                func.count(func.distinct(CameraEvent.person_id)).label('visitor_count'),
+                func.sum(CameraEvent.dwell_time).label('total_dwell_time')
+            ).group_by(func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00')).all()
+            
+            # Format results
+            gender_analytics = []
+            for stat in gender_stats:
+                gender_analytics.append({
+                    'gender': stat.gender_outcome or 'other',
+                    'visitor_count': stat.visitor_count,
+                    'total_dwell_time': int(stat.total_dwell_time or 0),
+                    'avg_dwell_time': float(stat.avg_dwell_time or 0)
+                })
+            
+            age_group_analytics = []
+            for stat in age_group_stats:
+                age_group_analytics.append({
+                    'age_group': stat.age_group_outcome or 'other',
+                    'visitor_count': stat.visitor_count,
+                    'total_dwell_time': int(stat.total_dwell_time or 0),
+                    'avg_dwell_time': float(stat.avg_dwell_time or 0)
+                })
+            
+            time_period_analytics = []
+            for stat in time_period_stats:
+                time_period_analytics.append({
+                    'time_period': self._format_time_period(stat.time_period),
+                    'visitor_count': stat.visitor_count,
+                    'total_dwell_time': int(stat.total_dwell_time or 0)
+                })
+            
+            return {
+                'gender_analytics': gender_analytics,
+                'age_group_analytics': age_group_analytics,
+                'time_period_analytics': time_period_analytics,
+                'calculated_at': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Demographic KPI calculation failed: {e}")
+            raise AnalyticsError(f"Demographic KPI calculation failed: {str(e)}")
+
+    def _format_time_period(self, time_str: str) -> str:
+        """Format time period as '01:00 PM - 02:00 PM'"""
+        try:
+            if not time_str:
+                return "Unknown"
+            
+            # Parse hour from "HH:00" format
+            hour = int(time_str.split(':')[0])
+            
+            # Format as "HH:00 AM/PM - (HH+1):00 AM/PM"
+            start_time = f"{hour:02d}:00"
+            end_hour = (hour + 1) % 24
+            end_time = f"{end_hour:02d}:00"
+            
+            # Convert to 12-hour format
+            start_12hr = datetime.strptime(start_time, "%H:%M").strftime("%I:%M %p")
+            end_12hr = datetime.strptime(end_time, "%H:%M").strftime("%I:%M %p")
+            
+            return f"{start_12hr} - {end_12hr}"
+        except Exception:
+            return "Unknown"
+
+    def calculate_demographic_distribution(self, start_date: Optional[datetime] = None,
+                                        end_date: Optional[datetime] = None) -> Dict:
+        """Calculate demographic distribution analytics"""
+        logger.info("Calculating demographic distribution...")
+        
+        try:
+            # Base query for date filtering
+            base_query = self.db.query(CameraEvent)
+            if start_date:
+                base_query = base_query.filter(CameraEvent.created_at >= start_date)
+            if end_date:
+                base_query = base_query.filter(CameraEvent.created_at <= end_date)
+            
+            # Gender distribution
+            gender_distribution = base_query.with_entities(
+                CameraEvent.gender_outcome,
+                func.count(func.distinct(CameraEvent.person_id)).label('visitor_count'),
+                func.sum(CameraEvent.dwell_time).label('total_dwell_time')
+            ).group_by(CameraEvent.gender_outcome).all()
+            
+            # Age group distribution
+            age_group_distribution = base_query.with_entities(
+                CameraEvent.age_group_outcome,
+                func.count(func.distinct(CameraEvent.person_id)).label('visitor_count'),
+                func.sum(CameraEvent.dwell_time).label('total_dwell_time')
+            ).group_by(CameraEvent.age_group_outcome).all()
+            
+            # Format results
+            gender_data = []
+            for stat in gender_distribution:
+                gender_data.append({
+                    'gender': stat.gender_outcome or 'other',
+                    'visitor_count': stat.visitor_count,
+                    'total_dwell_time': int(stat.total_dwell_time or 0)
+                })
+            
+            age_group_data = []
+            for stat in age_group_distribution:
+                age_group_data.append({
+                    'age_group': stat.age_group_outcome or 'other',
+                    'visitor_count': stat.visitor_count,
+                    'total_dwell_time': int(stat.total_dwell_time or 0)
+                })
+            
+            return {
+                'gender_distribution': gender_data,
+                'age_group_distribution': age_group_data,
+                'calculated_at': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Demographic distribution calculation failed: {e}")
+            raise AnalyticsError(f"Demographic distribution failed: {str(e)}")
+
+    def calculate_time_based_demographics(self, start_date: Optional[datetime] = None,
+                                        end_date: Optional[datetime] = None) -> Dict:
+        """Calculate time-based demographic analytics"""
+        logger.info("Calculating time-based demographic analytics...")
+        
+        try:
+            # Base query for date filtering
+            base_query = self.db.query(CameraEvent)
+            if start_date:
+                base_query = base_query.filter(CameraEvent.created_at >= start_date)
+            if end_date:
+                base_query = base_query.filter(CameraEvent.created_at <= end_date)
+            
+            # Time period with demographic breakdown
+            time_demographics = base_query.with_entities(
+                func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00').label('time_period'),
+                CameraEvent.gender_outcome,
+                CameraEvent.age_group_outcome,
+                func.count(func.distinct(CameraEvent.person_id)).label('visitor_count'),
+                func.sum(CameraEvent.dwell_time).label('total_dwell_time')
+            ).group_by(
+                func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00'),
+                CameraEvent.gender_outcome,
+                CameraEvent.age_group_outcome
+            ).all()
+            
+            # Format results
+            time_demographics_data = []
+            for stat in time_demographics:
+                time_demographics_data.append({
+                    'time_period': self._format_time_period(stat.time_period),
+                    'gender': stat.gender_outcome or 'other',
+                    'age_group': stat.age_group_outcome or 'other',
+                    'visitor_count': stat.visitor_count,
+                    'total_dwell_time': int(stat.total_dwell_time or 0)
+                })
+            
+            return {
+                'time_demographics': time_demographics_data,
+                'calculated_at': datetime.now().isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"Time-based demographics calculation failed: {e}")
+            raise AnalyticsError(f"Time-based demographics failed: {str(e)}")
     
     def calculate_occupancy_analytics(self, start_date: Optional[datetime] = None,
                                    end_date: Optional[datetime] = None,

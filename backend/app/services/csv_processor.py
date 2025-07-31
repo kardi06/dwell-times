@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class CSVProcessor:
     """Handles CSV file processing for camera event data with dwell time calculation"""
     
-    REQUIRED_COLUMNS = ['person_id', 'camera_id', 'camera_description', 'zone_name', 'utc_time_started_readable', 'utc_time_ended_readable']
+    REQUIRED_COLUMNS = ['person_id', 'camera_id', 'camera_description', 'utc_time_started_readable', 'utc_time_ended_readable']
     VALID_EVENT_TYPES = ['entry', 'exit', 'loiter', 'crowd', 'appearance']
     
     # Map your timestamp columns to our expected format
@@ -22,6 +22,9 @@ class CSVProcessor:
         'utc_time_recorded', 'utc_time_s', 'frame_time',
         'utc_time_started_readable', 'utc_time_ended_readable'
     ]
+    
+    # Demographic columns for story 1.6
+    DEMOGRAPHIC_COLUMNS = ['age_group_outcome', 'gender_outcome']
     
     def __init__(self, db: Session):
         self.db = db
@@ -87,6 +90,35 @@ class CSVProcessor:
                 errors.append(f"Timestamp parsing error: {str(e)}")
         
         return len(errors) == 0, errors
+    
+    def process_demographic_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Process demographic data with null/undefined to 'other' mapping"""
+        # Handle age_group_outcome
+        if 'age_group_outcome' in df.columns:
+            # Map null/undefined values to "other"
+            df['age_group_outcome'] = df['age_group_outcome'].fillna('other')
+            # Also map empty strings and whitespace to "other"
+            df['age_group_outcome'] = df['age_group_outcome'].apply(
+                lambda x: 'other' if pd.isna(x) or str(x).strip() == '' else str(x).strip()
+            )
+        else:
+            # If column doesn't exist, create it with "other" as default
+            df['age_group_outcome'] = 'other'
+        
+        # Handle gender_outcome
+        if 'gender_outcome' in df.columns:
+            # Map null/undefined values to "other"
+            df['gender_outcome'] = df['gender_outcome'].fillna('other')
+            # Also map empty strings and whitespace to "other"
+            df['gender_outcome'] = df['gender_outcome'].apply(
+                lambda x: 'other' if pd.isna(x) or str(x).strip() == '' else str(x).strip()
+            )
+        else:
+            # If column doesn't exist, create it with "other" as default
+            df['gender_outcome'] = 'other'
+        
+        logger.info(f"Processed demographic data: age_group_outcome and gender_outcome mapped to 'other' for null values")
+        return df
     
     def parse_timestamps(self, df: pd.DataFrame) -> pd.DataFrame:
         """Parse timestamps with multiple format support"""
@@ -157,6 +189,9 @@ class CSVProcessor:
         # Sort by timestamp if available
         if 'timestamp' in df.columns:
             df = df.sort_values('timestamp')
+        
+        # Process demographic data
+        df = self.process_demographic_data(df)
         
         # Calculate dwell time
         df = self.calculate_dwell_time(df)
@@ -263,6 +298,8 @@ class CSVProcessor:
                 # Timestamp fields
                 utc_time_recorded=row.get('utc_time_recorded'),
                 utc_time_recorded_readable=row.get('utc_time_recorded_readable'),
+                utc_time_started_readable=row.get('utc_time_started_readable'),
+                utc_time_ended_readable=row.get('utc_time_ended_readable'),
                 appearance_utc_time_s=row.get('appearance_utc_time_s'),
                 utc_time_s=row.get('utc_time_s'),
                 utc_time_e=row.get('utc_time_e'),
@@ -303,10 +340,14 @@ class CSVProcessor:
                 watchlist_d=row.get('watchlist_d'),
                 watchlist_g_match=row.get('watchlist_g_match'),
                 
-                # Demographics
+                # Demographics (existing)
                 out_age_group=row.get('out_age_group'),
                 gender=row.get('gender'),
                 out_liveness=row.get('out_liveness'),
+                
+                # Enhanced demographics (new for story 1.6)
+                age_group_outcome=row.get('age_group_outcome'),
+                gender_outcome=row.get('gender_outcome'),
                 
                 # Calculated fields
                 session_id=row.get('session_id'),

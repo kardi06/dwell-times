@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, extract, case
 from typing import Optional, List
 from datetime import datetime, timedelta
 import tempfile
@@ -334,47 +334,98 @@ async def calculate_dwell_times(
 async def get_aggregated_events(
     page: int = Query(0, ge=0, description="Page number"),
     limit: int = Query(10, ge=1, le=100, description="Number of records per page"),
-    search: Optional[str] = Query(None, description="Search term for person_id or camera_description"),
+    search: Optional[str] = Query(None, description="Search term for person_id"),
+    person_id: Optional[str] = Query(None, description="Filter by person_id"),
+    date: Optional[str] = Query(None, description="Filter by date (YYYY-MM-DD)"),
+    gender: Optional[str] = Query(None, description="Filter by gender_outcome"),
+    age_group: Optional[str] = Query(None, description="Filter by age_group_outcome"),
+    time_period: Optional[str] = Query(None, description="Filter by time period (e.g., '01:00 PM - 02:00 PM')"),
     camera_filter: Optional[str] = Query(None, description="Filter by camera_description"),
     zone_filter: Optional[str] = Query(None, description="Filter by zone_name"),
-    sort_by: str = Query("created_at", description="Sort by: person_id, camera_description, total_dwell_time, avg_dwell_time, event_count, created_at"),
+    sort_by: str = Query("created_at", description="Sort by: person_id, time_period, gender, age_group, total_dwell_time, event_count, created_at"),
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
     db: Session = Depends(get_db)
 ):
-    """Get aggregated events grouped by person_id and camera_description"""
+    """Get aggregated events grouped by person_id, time_period, gender, age_group"""
     try:
         # Validate sort parameters
-        valid_sort_fields = ['person_id', 'camera_description', 'zone_name', 'total_dwell_time', 'avg_dwell_time', 'event_count', 'created_at']
+        valid_sort_fields = ['person_id', 'date', 'time_period', 'gender', 'age_group', 'total_dwell_time', 'event_count', 'created_at']
         if sort_by not in valid_sort_fields:
             raise HTTPException(status_code=400, detail=f"Invalid sort_by. Must be one of: {valid_sort_fields}")
         
         if sort_order not in ['asc', 'desc']:
             raise HTTPException(status_code=400, detail="Invalid sort_order. Must be asc or desc")
         
-        # Build query with GROUP BY
+        # Build query with new demographic grouping
         query = db.query(
             CameraEvent.person_id,
-            CameraEvent.camera_description,
-            CameraEvent.zone_name,
+            # Date and time period calculation using utc_time_started_readable
+            func.to_char(CameraEvent.utc_time_started_readable, 'YYYY-MM-DD').label('date'),
+            func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00').label('time_period'),
+            CameraEvent.gender_outcome.label('gender'),
+            CameraEvent.age_group_outcome.label('age_group'),
             func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
-            func.avg(CameraEvent.dwell_time).label('avg_dwell_time'),
             func.count(CameraEvent.id).label('event_count'),
             func.max(CameraEvent.created_at).label('created_at')
         ).group_by(
             CameraEvent.person_id,
-            CameraEvent.camera_description,
-            CameraEvent.zone_name
+            func.to_char(CameraEvent.utc_time_started_readable, 'YYYY-MM-DD'),
+            func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00'),
+            CameraEvent.gender_outcome,
+            CameraEvent.age_group_outcome
         )
+        
+        # Debug: Check what data exists in the database
+        debug_query = db.query(
+            CameraEvent.person_id,
+            CameraEvent.gender_outcome,
+            CameraEvent.age_group_outcome,
+            func.to_char(CameraEvent.utc_time_started_readable, 'YYYY-MM-DD').label('date')
+        ).limit(5)
+        debug_results = debug_query.all()
+        logger.info(f"Debug: Found {len(debug_results)} raw records")
+        for i, result in enumerate(debug_results):
+            logger.info(f"Debug record {i}: person_id='{result.person_id}', gender='{result.gender_outcome}', age_group='{result.age_group_outcome}', date='{result.date}'")
         
         # Apply filters
         if search:
             search_term = f"%{search}%"
-            query = query.filter(
-                or_(
-                    CameraEvent.person_id.ilike(search_term),
-                    CameraEvent.camera_description.ilike(search_term)
-                )
-            )
+            query = query.filter(CameraEvent.person_id.ilike(search_term))
+        
+        if person_id:
+            logger.info(f"Applying person_id filter: '{person_id}'")
+            person_term = f"%{person_id}%"
+            query = query.filter(CameraEvent.person_id.ilike(person_term))
+        
+        if date:
+            logger.info(f"Applying date filter: '{date}'")
+            query = query.filter(func.to_char(CameraEvent.utc_time_started_readable, 'YYYY-MM-DD') == date)
+        
+        if gender:
+            logger.info(f"Applying gender filter: '{gender}'")
+            query = query.filter(CameraEvent.gender_outcome == gender)
+        
+        if age_group:
+            logger.info(f"Applying age_group filter: '{age_group}'")
+            query = query.filter(CameraEvent.age_group_outcome == age_group)
+        
+        if time_period:
+            # Convert frontend time period format to database format
+            # Frontend sends "01:00 PM - 02:00 PM", we need to extract hour
+            try:
+                # Extract hour from time period like "01:00 PM - 02:00 PM"
+                # Split by space and take the first part (before the dash)
+                time_part = time_period.split(' - ')[0]  # "01:00 AM"
+                # Parse the time to get hour
+                time_obj = datetime.strptime(time_part, "%I:%M %p")
+                hour = time_obj.hour
+                db_time_period = f"{hour:02d}:00"  # "01:00" for 1 AM, "13:00" for 1 PM
+                logger.info(f"Converted time_period '{time_period}' to database format '{db_time_period}'")
+                query = query.filter(func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00') == db_time_period)
+            except Exception as e:
+                logger.warning(f"Failed to parse time_period filter '{time_period}': {e}")
+                # Fallback to exact match
+                query = query.filter(func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00') == time_period)
         
         if camera_filter:
             query = query.filter(CameraEvent.camera_description == camera_filter)
@@ -385,12 +436,18 @@ async def get_aggregated_events(
         # Apply sorting
         if sort_by == 'total_dwell_time':
             order_column = func.sum(CameraEvent.dwell_time)
-        elif sort_by == 'avg_dwell_time':
-            order_column = func.avg(CameraEvent.dwell_time)
         elif sort_by == 'event_count':
             order_column = func.count(CameraEvent.id)
         elif sort_by == 'created_at':
             order_column = func.max(CameraEvent.created_at)
+        elif sort_by == 'date':
+            order_column = func.to_char(CameraEvent.utc_time_started_readable, 'YYYY-MM-DD')
+        elif sort_by == 'time_period':
+            order_column = func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00')
+        elif sort_by == 'gender':
+            order_column = CameraEvent.gender_outcome
+        elif sort_by == 'age_group':
+            order_column = CameraEvent.age_group_outcome
         else:
             order_column = getattr(CameraEvent, sort_by)
         
@@ -408,15 +465,21 @@ async def get_aggregated_events(
         # Execute query
         results = query.all()
         
-        # Format results
+        logger.info(f"Found {len(results)} results after filtering")
+        
+        # Format results with time period formatting
         events = []
         for result in results:
+            # Format time period as "01:00 PM - 02:00 PM"
+            time_period_formatted = _format_time_period(result.time_period)
+            
             events.append({
                 'person_id': result.person_id,
-                'camera_description': result.camera_description,
-                'zone_name': result.zone_name or '-',
+                'date': result.date,
+                'time_period': time_period_formatted,
+                'gender': result.gender or 'other',
+                'age_group': result.age_group or 'other',
                 'total_dwell_time': int(result.total_dwell_time or 0),
-                'avg_dwell_time': float(result.avg_dwell_time or 0),
                 'event_count': result.event_count,
                 'created_at': result.created_at.isoformat() if result.created_at else None
             })
@@ -433,6 +496,208 @@ async def get_aggregated_events(
         
     except Exception as e:
         logger.error(f"Failed to get aggregated events: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+def _format_time_period(time_str: str) -> str:
+    """Format time period as '01:00 PM - 02:00 PM'"""
+    try:
+        if not time_str:
+            return "Unknown"
+        
+        # Parse hour from "HH:00" format
+        hour = int(time_str.split(':')[0])
+        
+        # Format as "HH:00 AM/PM - (HH+1):00 AM/PM"
+        start_time = f"{hour:02d}:00"
+        end_hour = (hour + 1) % 24
+        end_time = f"{end_hour:02d}:00"
+        
+        # Convert to 12-hour format
+        start_12hr = datetime.strptime(start_time, "%H:%M").strftime("%I:%M %p")
+        end_12hr = datetime.strptime(end_time, "%H:%M").strftime("%I:%M %p")
+        
+        return f"{start_12hr} - {end_12hr}"
+    except Exception:
+        return "Unknown"
+
+@router.get("/demographic-insights")
+async def get_demographic_insights(
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    gender: Optional[str] = Query(None, description="Filter by gender_outcome"),
+    age_group: Optional[str] = Query(None, description="Filter by age_group_outcome"),
+    time_period: Optional[str] = Query(None, description="Filter by time period"),
+    db: Session = Depends(get_db)
+):
+    """Get demographic insights and analytics"""
+    try:
+        # Parse date parameters
+        start_dt = None
+        end_dt = None
+        
+        if start_date:
+            try:
+                start_dt = datetime.fromisoformat(start_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+        
+        if end_date:
+            try:
+                end_dt = datetime.fromisoformat(end_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+        
+        # Build query for demographic insights
+        query = db.query(
+            CameraEvent.gender_outcome,
+            CameraEvent.age_group_outcome,
+            func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00').label('time_period'),
+            func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
+            func.avg(CameraEvent.dwell_time).label('avg_dwell_time'),
+            func.count(CameraEvent.id).label('event_count'),
+            func.count(func.distinct(CameraEvent.person_id)).label('unique_visitors')
+        ).group_by(
+            CameraEvent.gender_outcome,
+            CameraEvent.age_group_outcome,
+            func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00')
+        )
+        
+        # Apply filters
+        if start_dt:
+            query = query.filter(CameraEvent.created_at >= start_dt)
+        if end_dt:
+            query = query.filter(CameraEvent.created_at <= end_dt)
+        if gender:
+            query = query.filter(CameraEvent.gender_outcome == gender)
+        if age_group:
+            query = query.filter(CameraEvent.age_group_outcome == age_group)
+        if time_period:
+            # Convert frontend time period format to database format
+            # Frontend sends "01:00 PM - 02:00 PM", we need to extract hour
+            try:
+                # Extract hour from time period like "01:00 PM - 02:00 PM"
+                # Split by space and take the first part (before the dash)
+                time_part = time_period.split(' - ')[0]  # "01:00 AM"
+                # Parse the time to get hour
+                time_obj = datetime.strptime(time_part, "%I:%M %p")
+                hour = time_obj.hour
+                db_time_period = f"{hour:02d}:00"  # "01:00" for 1 AM, "13:00" for 1 PM
+                logger.info(f"Converted time_period '{time_period}' to database format '{db_time_period}'")
+                query = query.filter(func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00') == db_time_period)
+            except Exception as e:
+                logger.warning(f"Failed to parse time_period filter '{time_period}': {e}")
+                # Fallback to exact match
+                query = query.filter(func.to_char(CameraEvent.utc_time_started_readable, 'HH24:00') == time_period)
+        
+        # Execute query
+        results = query.all()
+        
+        # Format results
+        insights = []
+        for result in results:
+            insights.append({
+                'gender': result.gender_outcome or 'other',
+                'age_group': result.age_group_outcome or 'other',
+                'time_period': _format_time_period(result.time_period),
+                'total_dwell_time': int(result.total_dwell_time or 0),
+                'avg_dwell_time': float(result.avg_dwell_time or 0),
+                'event_count': result.event_count,
+                'unique_visitors': result.unique_visitors
+            })
+        
+        return {
+            'demographic_insights': insights,
+            'parameters': {
+                'start_date': start_date,
+                'end_date': end_date,
+                'gender': gender,
+                'age_group': age_group,
+                'time_period': time_period
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get demographic insights: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/demographic-distribution")
+async def get_demographic_distribution(
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    db: Session = Depends(get_db)
+):
+    """Get demographic distribution analytics"""
+    try:
+        # Parse date parameters
+        start_dt = None
+        end_dt = None
+        
+        if start_date:
+            try:
+                start_dt = datetime.fromisoformat(start_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+        
+        if end_date:
+            try:
+                end_dt = datetime.fromisoformat(end_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+        
+        # Gender distribution
+        gender_query = db.query(
+            CameraEvent.gender_outcome,
+            func.count(func.distinct(CameraEvent.person_id)).label('visitor_count'),
+            func.sum(CameraEvent.dwell_time).label('total_dwell_time')
+        ).group_by(CameraEvent.gender_outcome)
+        
+        # Age group distribution
+        age_query = db.query(
+            CameraEvent.age_group_outcome,
+            func.count(func.distinct(CameraEvent.person_id)).label('visitor_count'),
+            func.sum(CameraEvent.dwell_time).label('total_dwell_time')
+        ).group_by(CameraEvent.age_group_outcome)
+        
+        # Apply date filters
+        if start_dt:
+            gender_query = gender_query.filter(CameraEvent.created_at >= start_dt)
+            age_query = age_query.filter(CameraEvent.created_at >= start_dt)
+        if end_dt:
+            gender_query = gender_query.filter(CameraEvent.created_at <= end_dt)
+            age_query = age_query.filter(CameraEvent.created_at <= end_dt)
+        
+        # Execute queries
+        gender_results = gender_query.all()
+        age_results = age_query.all()
+        
+        # Format results
+        gender_distribution = []
+        for result in gender_results:
+            gender_distribution.append({
+                'gender': result.gender_outcome or 'other',
+                'visitor_count': result.visitor_count,
+                'total_dwell_time': int(result.total_dwell_time or 0)
+            })
+        
+        age_distribution = []
+        for result in age_results:
+            age_distribution.append({
+                'age_group': result.age_group_outcome or 'other',
+                'visitor_count': result.visitor_count,
+                'total_dwell_time': int(result.total_dwell_time or 0)
+            })
+        
+        return {
+            'gender_distribution': gender_distribution,
+            'age_distribution': age_distribution,
+            'parameters': {
+                'start_date': start_date,
+                'end_date': end_date
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get demographic distribution: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/aggregated-dwell-time")

@@ -17,6 +17,8 @@ class CameraEvent(Base):
     # Timestamp fields from your CSV
     utc_time_recorded = Column(BigInteger, nullable=True)  # Unix timestamp
     utc_time_recorded_readable = Column(String(100), nullable=True)
+    utc_time_started_readable = Column(String(100), nullable=True)  # Start time for dwell calculation
+    utc_time_ended_readable = Column(String(100), nullable=True)    # End time for dwell calculation
     appearance_utc_time_s = Column(BigInteger, nullable=True)
     utc_time_s = Column(BigInteger, nullable=True)
     utc_time_e = Column(BigInteger, nullable=True)
@@ -55,10 +57,14 @@ class CameraEvent(Base):
     watchlist_d = Column(String(100), nullable=True)
     watchlist_g_match = Column(String(50), nullable=True)
     
-    # Demographics
+    # Demographics (existing)
     out_age_group = Column(String(50), nullable=True)
     gender = Column(String(20), nullable=True)
     out_liveness = Column(String(50), nullable=True)
+    
+    # Enhanced demographics (new for story 1.6)
+    age_group_outcome = Column(String(50), nullable=True, index=True)
+    gender_outcome = Column(String(20), nullable=True, index=True)
     
     # Calculated fields for dwell time analysis
     session_id = Column(String(100), nullable=True, index=True)
@@ -92,6 +98,10 @@ class CameraEvent(Base):
         Index('idx_created_at_analytics', 'created_at'),
         Index('idx_camera_description_filter', 'camera_description'),
         Index('idx_zone_name_filter', 'zone_name'),
+        # New indexes for demographic grouping (story 1.6)
+        Index('idx_age_group_outcome', 'age_group_outcome'),
+        Index('idx_gender_outcome', 'gender_outcome'),
+        Index('idx_demographic_grouping', 'person_id', 'age_group_outcome', 'gender_outcome', 'created_at'),
     )
 
 class PersonSession(Base):

@@ -7,6 +7,19 @@ interface KPIMetrics {
   max_dwell_time?: number;
   total_events_processed?: number;
   cameras_with_activity?: number;
+  // Demographic metrics
+  gender_analytics?: Array<{
+    gender: string;
+    visitor_count: number;
+    total_dwell_time: number;
+    avg_dwell_time: number;
+  }>;
+  age_group_analytics?: Array<{
+    age_group: string;
+    visitor_count: number;
+    total_dwell_time: number;
+    avg_dwell_time: number;
+  }>;
 }
 
 interface KPICardsProps {
@@ -21,7 +34,8 @@ const KPICard: React.FC<{
   color: string;
   loading?: boolean;
   trend?: string;
-}> = ({ title, value, icon, color, loading = false, trend }) => (
+  subtitle?: string;
+}> = ({ title, value, icon, color, loading = false, trend, subtitle }) => (
   <Card
     variant="elevated"
     className="h-full transition-all duration-300 hover:scale-105 hover:shadow-large"
@@ -54,6 +68,9 @@ const KPICard: React.FC<{
       ) : (
         <div>
           <p className="text-3xl font-bold text-secondary-900 mb-1">{value}</p>
+          {subtitle && (
+            <p className="text-sm text-secondary-600 mb-1">{subtitle}</p>
+          )}
           <p className="text-sm text-secondary-500">
             Last updated: {new Date().toLocaleTimeString()}
           </p>
@@ -72,6 +89,49 @@ const KPICards: React.FC<KPICardsProps> = ({ metrics, loading }) => {
     const mins = Math.round(minutes % 60);
     return `${hours}h ${mins}m`;
   };
+
+  const formatDwellTimeSeconds = (seconds: number) => {
+    if (seconds < 60) {
+      return `${Math.round(seconds)}s`;
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    return `${minutes}m ${remainingSeconds}s`;
+  };
+
+  // Calculate demographic insights
+  const getTopGender = () => {
+    if (!metrics?.gender_analytics || metrics.gender_analytics.length === 0) {
+      return { gender: 'N/A', count: 0 };
+    }
+    const topGender = metrics.gender_analytics.reduce((prev, current) => 
+      prev.visitor_count > current.visitor_count ? prev : current
+    );
+    return { gender: topGender.gender, count: topGender.visitor_count };
+  };
+
+  const getTopAgeGroup = () => {
+    if (!metrics?.age_group_analytics || metrics.age_group_analytics.length === 0) {
+      return { age_group: 'N/A', count: 0 };
+    }
+    const topAgeGroup = metrics.age_group_analytics.reduce((prev, current) => 
+      prev.visitor_count > current.visitor_count ? prev : current
+    );
+    return { age_group: topAgeGroup.age_group, count: topAgeGroup.visitor_count };
+  };
+
+  const getAverageDwellTimeByGender = () => {
+    if (!metrics?.gender_analytics || metrics.gender_analytics.length === 0) {
+      return 0;
+    }
+    const totalDwellTime = metrics.gender_analytics.reduce((sum, item) => sum + item.total_dwell_time, 0);
+    const totalVisitors = metrics.gender_analytics.reduce((sum, item) => sum + item.visitor_count, 0);
+    return totalVisitors > 0 ? totalDwellTime / totalVisitors : 0;
+  };
+
+  const topGender = getTopGender();
+  const topAgeGroup = getTopAgeGroup();
+  const avgDwellTimeByGender = getAverageDwellTimeByGender();
 
   const cards = [
     {
@@ -119,10 +179,9 @@ const KPICards: React.FC<KPICardsProps> = ({ metrics, loading }) => {
       trend: "+5% from last week",
     },
     {
-      title: "Max Dwell Time",
-      value: metrics?.max_dwell_time
-        ? formatDwellTime(metrics.max_dwell_time)
-        : "0m",
+      title: "Top Gender",
+      value: topGender.gender,
+      subtitle: `${topGender.count} visitors`,
       icon: (
         <svg
           className="w-6 h-6 text-white"
@@ -134,12 +193,34 @@ const KPICards: React.FC<KPICardsProps> = ({ metrics, loading }) => {
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+          />
+        </svg>
+      ),
+      color: "#ec4899",
+      trend: "Demographic insight",
+    },
+    {
+      title: "Top Age Group",
+      value: topAgeGroup.age_group,
+      subtitle: `${topAgeGroup.count} visitors`,
+      icon: (
+        <svg
+          className="w-6 h-6 text-white"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
           />
         </svg>
       ),
       color: "#f59e0b",
-      trend: "+8% from last week",
+      trend: "Demographic insight",
     },
     {
       title: "Events Processed",
@@ -186,7 +267,7 @@ const KPICards: React.FC<KPICardsProps> = ({ metrics, loading }) => {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
       {cards.map((card, index) => (
         <KPICard
           key={index}
@@ -196,6 +277,7 @@ const KPICards: React.FC<KPICardsProps> = ({ metrics, loading }) => {
           color={card.color}
           loading={loading}
           trend={card.trend}
+          subtitle={card.subtitle}
         />
       ))}
     </div>

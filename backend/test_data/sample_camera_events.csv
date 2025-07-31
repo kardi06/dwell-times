@@ -1,13 +1,17 @@
-timestamp,person_id,camera_id,event_type
-2024-01-01 10:00:00,person1,camera1,entry
-2024-01-01 10:05:00,person1,camera1,exit
-2024-01-01 10:10:00,person2,camera1,entry
-2024-01-01 10:15:00,person2,camera1,exit
-2024-01-01 11:00:00,person1,camera2,entry
-2024-01-01 11:10:00,person1,camera2,exit
-2024-01-01 12:00:00,person3,camera1,entry
-2024-01-01 12:30:00,person3,camera1,exit
-2024-01-02 09:00:00,person1,camera1,entry
-2024-01-02 09:15:00,person1,camera1,exit
-2024-01-02 10:00:00,person4,camera2,entry
-2024-01-02 10:20:00,person4,camera2,exit 
+timestamp,person_id,camera_id,event_type,utc_time_started_readable,utc_time_ended_readable,age_group_outcome,gender_outcome,camera_description,zone_name
+2024-01-01 10:00:00,person1,camera1,entry,2024-01-01 10:00:00,2024-01-01 10:05:00,20-29,male,Video 1,Cashier queue
+2024-01-01 10:05:00,person1,camera1,exit,2024-01-01 10:00:00,2024-01-01 10:05:00,20-29,male,Video 1,Cashier queue
+2024-01-01 10:10:00,person2,camera1,entry,2024-01-01 10:10:00,2024-01-01 10:15:00,30-39,female,Video 1,Cashier queue
+2024-01-01 10:15:00,person2,camera1,exit,2024-01-01 10:10:00,2024-01-01 10:15:00,30-39,female,Video 1,Cashier queue
+2024-01-01 11:00:00,person1,camera2,entry,2024-01-01 11:00:00,2024-01-01 11:10:00,20-29,male,Video 2,Entrance
+2024-01-01 11:10:00,person1,camera2,exit,2024-01-01 11:00:00,2024-01-01 11:10:00,20-29,male,Video 2,Entrance
+2024-01-01 12:00:00,person3,camera1,entry,2024-01-01 12:00:00,2024-01-01 12:30:00,40-49,other,Video 1,Cashier queue
+2024-01-01 12:30:00,person3,camera1,exit,2024-01-01 12:00:00,2024-01-01 12:30:00,40-49,other,Video 1,Cashier queue
+2024-01-02 09:00:00,person1,camera1,entry,2024-01-02 09:00:00,2024-01-02 09:15:00,20-29,male,Video 1,Cashier queue
+2024-01-02 09:15:00,person1,camera1,exit,2024-01-02 09:00:00,2024-01-02 09:15:00,20-29,male,Video 1,Cashier queue
+2024-01-02 10:00:00,person4,camera2,entry,2024-01-02 10:00:00,2024-01-02 10:20:00,30-39,female,Video 2,Entrance
+2024-01-02 10:20:00,person4,camera2,exit,2024-01-02 10:00:00,2024-01-02 10:20:00,30-39,female,Video 2,Entrance
+2024-01-02 14:00:00,person5,camera1,entry,2024-01-02 14:00:00,2024-01-02 14:30:00,20-29,male,Video 1,Cashier queue
+2024-01-02 14:30:00,person5,camera1,exit,2024-01-02 14:00:00,2024-01-02 14:30:00,20-29,male,Video 1,Cashier queue
+2024-01-02 15:00:00,person6,camera2,entry,2024-01-02 15:00:00,2024-01-02 15:45:00,40-49,female,Video 2,Entrance
+2024-01-02 15:45:00,person6,camera2,exit,2024-01-02 15:00:00,2024-01-02 15:45:00,40-49,female,Video 2,Entrance 
