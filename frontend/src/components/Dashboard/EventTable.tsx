@@ -33,7 +33,16 @@ const EventTable: React.FC<EventTableProps> = ({ token }) => {
 
   // Available filter options
   const genderOptions = ['male', 'female', 'other'];
-  const ageGroupOptions = ['20-29', '30-39', '40-49', 'other'];
+  const ageGroupOptions = [
+    '10–19',
+    '20–29',
+    '30–39',
+    '40–49',
+    '50–59',
+    'inconclusive',
+    'not_determined',
+    'other'
+  ];
   const timePeriodOptions = [
     '12:00 AM - 01:00 AM', '01:00 AM - 02:00 AM', '02:00 AM - 03:00 AM',
     '03:00 AM - 04:00 AM', '04:00 AM - 05:00 AM', '05:00 AM - 06:00 AM',

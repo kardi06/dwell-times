@@ -700,6 +700,116 @@ async def get_demographic_distribution(
         logger.error(f"Failed to get demographic distribution: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@router.get("/chart-data")
+async def get_chart_data(
+    time_period: str = Query("week", description="Time period: day, week, month, quarter, year"),
+    metric_type: str = Query("average", description="Metric type: total, average"),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    db: Session = Depends(get_db)
+):
+    """Get chart data for dwell time analytics with demographic breakdowns"""
+    try:
+        # Parse date parameters
+        start_dt = None
+        end_dt = None
+        
+        if start_date:
+            try:
+                start_dt = datetime.fromisoformat(start_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+        
+        if end_date:
+            try:
+                end_dt = datetime.fromisoformat(end_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+
+        # Build base query
+        query = db.query(CameraEvent)
+        
+        # Apply date filters
+        if start_dt:
+            query = query.filter(CameraEvent.created_at >= start_dt)
+        if end_dt:
+            query = query.filter(CameraEvent.created_at <= end_dt)
+
+        # Apply time period filtering
+        if time_period == "day":
+            # Get data for the last 24 hours
+            end_dt = datetime.now()
+            start_dt = end_dt - timedelta(days=1)
+            query = query.filter(CameraEvent.created_at >= start_dt)
+        elif time_period == "week":
+            # Get data for the last 7 days
+            end_dt = datetime.now()
+            start_dt = end_dt - timedelta(days=7)
+            query = query.filter(CameraEvent.created_at >= start_dt)
+        elif time_period == "month":
+            # Get data for the last 30 days
+            end_dt = datetime.now()
+            start_dt = end_dt - timedelta(days=30)
+            query = query.filter(CameraEvent.created_at >= start_dt)
+        elif time_period == "quarter":
+            # Get data for the last 90 days
+            end_dt = datetime.now()
+            start_dt = end_dt - timedelta(days=90)
+            query = query.filter(CameraEvent.created_at >= start_dt)
+        elif time_period == "year":
+            # Get data for the last 365 days
+            end_dt = datetime.now()
+            start_dt = end_dt - timedelta(days=365)
+            query = query.filter(CameraEvent.created_at >= start_dt)
+
+        # Aggregate data by age group and gender
+        if metric_type == "total":
+            # Total dwell time aggregation
+            result = query.with_entities(
+                func.coalesce(CameraEvent.age_group_outcome, 'Other').label('age_group'),
+                func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
+                func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
+                func.avg(CameraEvent.dwell_time).label('avg_dwell_time'),
+                func.count(CameraEvent.id).label('event_count')
+            ).group_by(
+                func.coalesce(CameraEvent.age_group_outcome, 'Other'),
+                func.coalesce(CameraEvent.gender_outcome, 'other')
+            ).all()
+        else:
+            # Average dwell time aggregation
+            result = query.with_entities(
+                func.coalesce(CameraEvent.age_group_outcome, 'Other').label('age_group'),
+                func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
+                func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
+                func.avg(CameraEvent.dwell_time).label('avg_dwell_time'),
+                func.count(CameraEvent.id).label('event_count')
+            ).group_by(
+                func.coalesce(CameraEvent.age_group_outcome, 'Other'),
+                func.coalesce(CameraEvent.gender_outcome, 'other')
+            ).all()
+
+        # Format the results
+        chart_data = []
+        for row in result:
+            chart_data.append({
+                "age_group": row.age_group or "Other",
+                "gender": row.gender or "other",
+                "total_dwell_time": int(row.total_dwell_time or 0),
+                "avg_dwell_time": float(row.avg_dwell_time or 0),
+                "event_count": int(row.event_count or 0)
+            })
+
+        return {
+            "chart_data": chart_data,
+            "time_period": time_period,
+            "metric_type": metric_type,
+            "total_records": len(chart_data)
+        }
+
+    except Exception as e:
+        logger.error(f"Chart data retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve chart data")
+
 @router.get("/aggregated-dwell-time")
 async def get_aggregated_dwell_time_analytics(
     group_by: str = Query("person_id", description="Group by: person_id, camera_description"),

@@ -3,6 +3,9 @@ import { Card, Alert, Button, Loading } from '../ui';
 import FileUpload from '../FileUpload/FileUpload';
 import KPICards from './KPICards';
 import EventTable from './EventTable';
+import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters } from './Charts';
+import { ChartDataPoint } from './Charts/DwellTimeBarChart';
+import { TimePeriod, MetricType } from './Charts/ChartFilters';
 
 interface DashboardProps {
   token: string;
@@ -35,6 +38,12 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
   const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Chart state
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [chartLoading, setChartLoading] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('week');
+  const [metricType, setMetricType] = useState<MetricType>('average');
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -93,6 +102,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
       if (response.ok) {
         // Refresh metrics after successful upload
         await fetchMetrics();
+        await fetchChartData();
       } else {
         const errorData = await response.json();
         throw new Error(errorData.detail || 'Upload failed');
@@ -102,14 +112,45 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
     }
   };
 
+  const fetchChartData = async () => {
+    setChartLoading(true);
+    try {
+      const response = await fetch(
+        `http://localhost:8000/api/v1/analytics/chart-data?time_period=${timePeriod}&metric_type=${metricType}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setChartData(data.chart_data || []);
+      } else {
+        console.error('Failed to fetch chart data');
+      }
+    } catch (err) {
+      console.error('Error fetching chart data:', err);
+    } finally {
+      setChartLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchMetrics();
+    fetchChartData();
   }, [token]);
+
+  useEffect(() => {
+    fetchChartData();
+  }, [timePeriod, metricType]);
 
   const tabs = [
     { id: 0, name: 'Upload Data', icon: '📁', description: 'Upload camera event data' },
     { id: 1, name: 'Analytics', icon: '📊', description: 'View detailed analytics' },
-    { id: 2, name: 'Event Table', icon: '📋', description: 'Browse event data' },
+    { id: 2, name: 'Charts', icon: '📈', description: 'Dwell time analytics charts' },
+    { id: 3, name: 'Event Table', icon: '📋', description: 'Browse event data' },
   ];
 
   return (
@@ -266,6 +307,48 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
             )}
 
             {activeTab === 2 && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">
+                    Dwell Time Analytics Charts
+                  </h3>
+                  <p className="text-secondary-600">
+                    Interactive charts showing dwell time patterns by demographics and time periods.
+                  </p>
+                </div>
+                
+                {/* Chart Filters */}
+                <ChartFilters
+                  timePeriod={timePeriod}
+                  metricType={metricType}
+                  onTimePeriodChange={setTimePeriod}
+                  onMetricTypeChange={setMetricType}
+                />
+
+                {/* Charts Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Bar Chart */}
+                  <Card variant="elevated" className="p-6">
+                    <DwellTimeBarChart
+                      data={chartData}
+                      isLoading={chartLoading}
+                      title="Average Dwell Time by Gender"
+                    />
+                  </Card>
+
+                  {/* Line Chart */}
+                  <Card variant="elevated" className="p-6">
+                    <DwellTimeLineChart
+                      data={chartData}
+                      isLoading={chartLoading}
+                      title="Average Dwell Time by Age and Gender"
+                    />
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 3 && (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-xl font-semibold text-secondary-900 mb-2">
