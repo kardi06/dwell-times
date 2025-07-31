@@ -25,6 +25,8 @@
   - `utc_time_s` (bigint)
   - `utc_time_e` (bigint)
   - `utc_time_e_first_frame_last` (bigint)
+  - `utc_time_started_readable` (timestamp, converted from VARCHAR)
+  - `utc_time_ended_readable` (timestamp, converted from VARCHAR)
   - `first_frame` (integer)
   - `last_frame_attributes` (VARCHAR(100))
   - `camera_de_node_id` (VARCHAR(100))
@@ -102,6 +104,6 @@
 - Raw files (CSV/JSON) can be stored on disk or in cloud storage, with only metadata in DB.
 - For future: partition large tables by date or camera for scalability.
 - **Demographic Data Handling:** Null/undefined values in `age_group_outcome` and `gender_outcome` are mapped to "other" during processing.
-- **Dwell Time Calculation:** Pre-calculated during CSV upload using `utc_time_ended_readable - utc_time_started_readable` formula.
+- **Dwell Time Calculation:** Pre-calculated during CSV upload using `utc_time_ended_readable - utc_time_started_readable` formula. Both columns are stored as timestamp type for accurate time calculations.
 
 ---
