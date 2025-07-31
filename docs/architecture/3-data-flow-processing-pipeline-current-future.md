@@ -19,11 +19,13 @@
 1. **Upload:** User uploads a CSV (camera events) and/or JSON (crowd/loitering events) via the web UI.
 2. **API Handling:** FastAPI receives the file, validates schema/format, and stores the raw upload.
 3. **Processing:**
-   - **Lightweight (small file):** Pandas processes the file synchronously—calculates dwell time, aggregates by session/person/camera.
+   - **Lightweight (small file):** Pandas processes the file synchronously—calculates dwell time, extracts demographic data, aggregates by session/person/camera/demographics.
    - **Heavy (large file):** File is queued to Celery (via Redis). Worker processes data asynchronously.
+   - **Demographic Processing:** Extracts `age_group_outcome` and `gender_outcome`, maps null/undefined to "other".
+   - **Dwell Time Calculation:** Calculates dwell time using `utc_time_ended_readable - utc_time_started_readable` formula.
    - **Insight Merging:** If a JSON “Insight Report” is provided, its events are time-synced with CSV-derived occupancy, enabling cross-source analytics (e.g., peak crowd, correlation).
-4. **Storage:** Results (sessions, aggregates, crowd events) and file metadata are saved to PostgreSQL.
-5. **Analytics Fetch:** React frontend calls API endpoints to fetch cards, tables, charts, and advanced stats.
+4. **Storage:** Results (sessions, aggregates, crowd events, demographic data) and file metadata are saved to PostgreSQL.
+5. **Analytics Fetch:** React frontend calls API endpoints to fetch cards, tables, charts, and advanced stats with demographic filtering.
 6. **(Optional) Real-Time:** If real-time mode is enabled, backend pushes dwell/crowd alerts via WebSocket to UI.
 
 **Visual Flow (Text Diagram):**

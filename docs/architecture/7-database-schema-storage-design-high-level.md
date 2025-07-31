@@ -2,20 +2,53 @@
 
 **Core Tables:**
 
-- **session\_events**
+- **camera\_events** (Primary table for camera event data)
 
-  - `id` (PK)
-  - `person_id`
-  - `event_id`
-  - `camera_id`
-  - `camera_description`
-  - `camera_group_id`
-  - `camera_group_name`
-  - `utc_time_started`
-  - `utc_time_ended`
-  - `dwell_sec`
-  - Demographic columns: `age_group_outcome`, `gender_outcome`, `appearance_category`, ...
-  - `raw_payload` (optional JSON column for extra/unmapped fields)
+  - `id` (PK, integer, auto-increment)
+  - `timestamp` (timestamp with time zone)
+  - `person_id` (VARCHAR(100), NOT NULL)
+  - `camera_id` (VARCHAR(100), NOT NULL)
+  - `event_type` (VARCHAR(50), NOT NULL)
+  - `session_id` (VARCHAR(100))
+  - `dwell_duration` (integer)
+  - `is_entry` (boolean)
+  - `is_exit` (boolean)
+  - `created_at` (timestamp with time zone, DEFAULT CURRENT_TIMESTAMP)
+  - `updated_at` (timestamp with time zone, DEFAULT CURRENT_TIMESTAMP)
+  - `raw_data` (text)
+  - `retain` (boolean)
+  - `appearance_labeled_ou_event` (VARCHAR(50))
+  - `event_id` (VARCHAR(100))
+  - `utc_time_recorded` (bigint)
+  - `utc_time_recorded_readable` (VARCHAR(100))
+  - `appearance_utc_time_s` (bigint)
+  - `utc_time_s` (bigint)
+  - `utc_time_e` (bigint)
+  - `utc_time_e_first_frame_last` (bigint)
+  - `first_frame` (integer)
+  - `last_frame_attributes` (VARCHAR(100))
+  - `camera_de_node_id` (VARCHAR(100))
+  - `analysis_m_record_face` (boolean)
+  - `matching_camera` (boolean)
+  - `camera_grc` (VARCHAR(100))
+  - `camera_grc_zone_name` (VARCHAR(100))
+  - `zone_id` (VARCHAR(100))
+  - `zone_verific_face_score` (double precision)
+  - `frame_id` (integer)
+  - `frame_time` (bigint)
+  - `bbox_x1`, `bbox_y1`, `bbox_x2`, `bbox_y2` (integer)
+  - `watchlist_ty` (VARCHAR(50))
+  - `watchlist_d` (VARCHAR(100))
+  - `watchlist_g_match` (VARCHAR(50))
+  - `out_age_group` (VARCHAR(50))
+  - `gender` (VARCHAR(20))
+  - `out_liveness` (VARCHAR(50))
+  - `processed_timestamp` (timestamp with time zone)
+  - `dwell_time` (integer, calculated dwell time)
+  - `camera_description` (VARCHAR(100))
+  - `zone_name` (VARCHAR(100), nullable)
+  - **NEW:** `age_group_outcome` (VARCHAR(50), nullable)
+  - **NEW:** `gender_outcome` (VARCHAR(20), nullable)
 
 - **crowd\_events**
 
@@ -58,11 +91,17 @@
 
 **Indexes:**
 
-- Primary and foreign key indexes for `person_id`, `camera_id`, time fields for fast filtering and aggregation.
+- Primary key index on `id`
+- Indexes on `person_id`, `camera_id`, `created_at` for fast filtering and aggregation
+- **NEW:** Indexes on `age_group_outcome`, `gender_outcome` for demographic filtering
+- **NEW:** Composite index on `person_id`, `age_group_outcome`, `gender_outcome`, `created_at` for demographic grouping queries
+- Indexes on `dwell_time`, `camera_description`, `zone_name` for analytics queries
 
 **Storage:**
 
 - Raw files (CSV/JSON) can be stored on disk or in cloud storage, with only metadata in DB.
 - For future: partition large tables by date or camera for scalability.
+- **Demographic Data Handling:** Null/undefined values in `age_group_outcome` and `gender_outcome` are mapped to "other" during processing.
+- **Dwell Time Calculation:** Pre-calculated during CSV upload using `utc_time_ended_readable - utc_time_started_readable` formula.
 
 ---

@@ -6,6 +6,8 @@
 - **As a user, I want to see a dashboard of key metrics** (total visitors, dwell time, events) as soon as my data is uploaded and processed.
 - **As a user, I want to view and filter a detailed table of events and sessions**, so I can investigate individual entries or export for compliance.
 - **As a user, I want to sort, filter, and export the event/session table to CSV**, so I can share or archive reports.
+- **As a user, I want to analyze dwell time patterns by demographics** (age group, gender), so I can understand visitor behavior across different population segments.
+- **As a user, I want to filter data by demographic attributes** with dropdown selects, so I can focus on specific age groups or genders for analysis.
 - **As a user, I want to log in securely**, so that only authorized staff can access data and dashboards.
 
 ---
@@ -15,9 +17,11 @@
 - **As a user, I want to filter analytics by camera, date range, or demographics**, so I can drill down to relevant insights.
 - **As a user, I want to see charts of occupancy and crowding over time**, so I can spot patterns or anomalies.
 - **As a user, I want to identify and analyze repeat visitors** and see their historical dwell patterns.
+- **As a user, I want to analyze dwell time patterns by time periods** (hourly intervals), so I can understand temporal behavior patterns.
 - **As a user, I want to be alerted when occupancy or dwell time exceeds a threshold**, so I can respond to crowding or loitering incidents in real time.
 - **As an admin, I want to manage users, file uploads, and project history**, so teams can collaborate securely and track changes.
 - **As an analyst, I want to integrate data with BI tools**, so I can build custom reports beyond the standard dashboard.
+- **As a user, I want to see demographic distribution charts and heatmaps**, so I can visualize age and gender patterns across different time periods and locations.
 
 ---
 
