@@ -300,10 +300,10 @@ class CSVProcessor:
                 utc_time_recorded_readable=row.get('utc_time_recorded_readable'),
                 utc_time_started_readable=row.get('utc_time_started_readable'),
                 utc_time_ended_readable=row.get('utc_time_ended_readable'),
-                appearance_utc_time_s=row.get('appearance_utc_time_s'),
-                utc_time_s=row.get('utc_time_s'),
-                utc_time_e=row.get('utc_time_e'),
-                utc_time_e_first_frame_last=row.get('utc_time_e_first_frame_last'),
+                # appearance_utc_time_s=row.get('appearance_utc_time_s'),
+                # utc_time_s=row.get('utc_time_s'),
+                # utc_time_e=row.get('utc_time_e'),
+                # utc_time_e_first_frame_last=row.get('utc_time_e_first_frame_last'),
                 
                 # Frame information
                 first_frame=row.get('first_frame'),

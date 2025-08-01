@@ -17,11 +17,9 @@ class CameraEvent(Base):
     # Timestamp fields from your CSV
     utc_time_recorded = Column(BigInteger, nullable=True)  # Unix timestamp
     utc_time_recorded_readable = Column(String(100), nullable=True)
-    utc_time_started_readable = Column(String(100), nullable=True)  # Start time for dwell calculation
-    utc_time_ended_readable = Column(String(100), nullable=True)    # End time for dwell calculation
+    utc_time_started_readable = Column(DateTime, nullable=True)  # Start time for dwell calculation
+    utc_time_ended_readable = Column(DateTime, nullable=True)    # End time for dwell calculation
     appearance_utc_time_s = Column(BigInteger, nullable=True)
-    utc_time_s = Column(BigInteger, nullable=True)
-    utc_time_e = Column(BigInteger, nullable=True)
     utc_time_e_first_frame_last = Column(BigInteger, nullable=True)
     
     # Frame information

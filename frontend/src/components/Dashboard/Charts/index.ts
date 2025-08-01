@@ -43,7 +43,9 @@ export const chartTheme = {
   }
 };
 
-// Export chart components (will be created next)
+// Export chart components
 export { DwellTimeBarChart } from './DwellTimeBarChart';
 export { DwellTimeLineChart } from './DwellTimeLineChart';
-export { ChartFilters } from './ChartFilters'; 
+export { ChartFilters } from './ChartFilters';
+export { FootTrafficChart } from './FootTrafficChart';
+export { FootTrafficFilters } from './FootTrafficFilters'; 

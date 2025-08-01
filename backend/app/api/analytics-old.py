@@ -881,4 +881,186 @@ async def get_aggregated_dwell_time_analytics(
         
     except Exception as e:
         logger.error(f"Failed to get aggregated dwell time analytics: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/foot-traffic-data")
+async def get_foot_traffic_data(
+    time_period: str = Query("day", description="Time period: day, weekly, monthly, yearly"),
+    selected_date: str = Query(..., description="Selected date (YYYY-MM-DD)"),
+    camera_filter: str = Query("all", description="Camera filter or 'all'"),
+    view_type: str = Query("hourly", description="View type: hourly, daily"),
+    db: Session = Depends(get_db)
+):
+    """Get foot traffic analytics data for chart visualization"""
+    try:
+        # Validate parameters
+        if time_period not in ["day", "weekly", "monthly", "yearly"]:
+            raise HTTPException(status_code=400, detail="Invalid time_period. Must be day, weekly, monthly, or yearly")
+        
+        if view_type not in ["hourly", "daily"]:
+            raise HTTPException(status_code=400, detail="Invalid view_type. Must be hourly or daily")
+        
+        # Parse selected date
+        try:
+            selected_dt = datetime.fromisoformat(selected_date)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid selected_date format. Use YYYY-MM-DD")
+        
+        # Build base query
+        query = db.query(CameraEvent)
+        
+        # Apply camera filter
+        if camera_filter != "all":
+            query = query.filter(CameraEvent.camera_description == camera_filter)
+        
+        # Apply date filtering based on time period
+        if time_period == "day":
+            # Filter for the specific day
+            start_dt = selected_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_dt = selected_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+            query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+            query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
+        elif time_period == "weekly":
+            # Filter for the week containing the selected date
+            start_of_week = selected_dt - timedelta(days=selected_dt.weekday())
+            start_dt = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+            end_dt = start_of_week + timedelta(days=6)
+            end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+            query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+            query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
+        elif time_period == "monthly":
+            # Filter for the month containing the selected date
+            start_dt = selected_dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if selected_dt.month == 12:
+                end_dt = selected_dt.replace(year=selected_dt.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                end_dt = selected_dt.replace(month=selected_dt.month + 1, day=1) - timedelta(days=1)
+            end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+            query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+            query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
+        elif time_period == "yearly":
+            # Filter for the year containing the selected date
+            start_dt = selected_dt.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_dt = selected_dt.replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=999999)
+            query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+            query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
+        
+        # Build aggregation query based on view type
+        if view_type == "hourly":
+            # Hourly view: 10 AM to 10 PM (hours 10-22)
+            query = query.filter(extract('hour', CameraEvent.utc_time_started_readable).between(10, 22))
+            
+            # Group by hour and gender
+            agg_query = query.with_entities(
+                extract('hour', CameraEvent.utc_time_started_readable).label('hour'),
+                func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
+                func.count(func.distinct(CameraEvent.person_id)).label('unique_count')
+            ).group_by(
+                extract('hour', CameraEvent.utc_time_started_readable),
+                func.coalesce(CameraEvent.gender_outcome, 'other')
+            ).order_by(extract('hour', CameraEvent.utc_time_started_readable))
+            
+        else:  # daily view
+            # Group by day of week and gender
+            agg_query = query.with_entities(
+                extract('dow', CameraEvent.utc_time_started_readable).label('day_of_week'),
+                func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
+                func.count(func.distinct(CameraEvent.person_id)).label('unique_count')
+            ).group_by(
+                extract('dow', CameraEvent.utc_time_started_readable),
+                func.coalesce(CameraEvent.gender_outcome, 'other')
+            ).order_by(extract('dow', CameraEvent.utc_time_started_readable))
+        
+        # Execute query
+        results = agg_query.all()
+        
+        # Process results into chart data format
+        chart_data = []
+        
+        if view_type == "hourly":
+            # Create data points for each hour (10 AM to 10 PM)
+            hour_labels = ["10 AM", "11 AM", "12 PM", "1 PM", "2 PM", "3 PM", "4 PM", "5 PM", "6 PM", "7 PM", "8 PM", "9 PM", "10 PM"]
+            hours = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+            
+            for i, hour in enumerate(hours):
+                male_count = 0
+                female_count = 0
+                other_count = 0
+                
+                # Find data for this hour
+                for result in results:
+                    if result.hour == hour:
+                        if result.gender == 'male':
+                            male_count = result.unique_count
+                        elif result.gender == 'female':
+                            female_count = result.unique_count
+                        else:
+                            other_count = result.unique_count
+                
+                chart_data.append({
+                    'time_period': hour_labels[i],
+                    'male_count': male_count,
+                    'female_count': female_count,
+                    'other_count': other_count,
+                    'total_count': male_count + female_count + other_count
+                })
+        else:
+            # Create data points for each day of week
+            day_labels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            days = [1, 2, 3, 4, 5, 6, 0]  # Monday=1, Sunday=0
+            
+            for i, day in enumerate(days):
+                male_count = 0
+                female_count = 0
+                other_count = 0
+                
+                # Find data for this day
+                for result in results:
+                    if result.day_of_week == day:
+                        if result.gender == 'male':
+                            male_count = result.unique_count
+                        elif result.gender == 'female':
+                            female_count = result.unique_count
+                        else:
+                            other_count = result.unique_count
+                
+                chart_data.append({
+                    'time_period': day_labels[i],
+                    'male_count': male_count,
+                    'female_count': female_count,
+                    'other_count': other_count,
+                    'total_count': male_count + female_count + other_count
+                })
+        
+        return {
+            'data': chart_data,
+            'parameters': {
+                'time_period': time_period,
+                'selected_date': selected_date,
+                'camera_filter': camera_filter,
+                'view_type': view_type
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get foot traffic data: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/cameras")
+async def get_cameras(db: Session = Depends(get_db)):
+    """Get list of available camera descriptions"""
+    try:
+        # Query distinct camera descriptions
+        cameras = db.query(CameraEvent.camera_description).distinct().filter(
+            CameraEvent.camera_description.isnot(None)
+        ).all()
+        
+        camera_list = [camera.camera_description for camera in cameras if camera.camera_description]
+        
+        return {
+            'cameras': camera_list
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to get cameras: {e}")
         raise HTTPException(status_code=500, detail="Internal server error") 

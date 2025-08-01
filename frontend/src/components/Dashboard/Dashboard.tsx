@@ -6,6 +6,7 @@ import EventTable from './EventTable';
 import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters } from './Charts';
 import { ChartDataPoint } from './Charts/DwellTimeBarChart';
 import { TimePeriod, MetricType } from './Charts/ChartFilters';
+import { FootTrafficAnalytics } from './FootTrafficAnalytics';
 
 interface DashboardProps {
   token: string;
@@ -124,11 +125,20 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
 
       // Add date parameters if selected
       if (selectedDate) {
-        const dateStr = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-        params.append('start_date', dateStr);
+        let startDate = selectedDate;
+        let endDate = new Date(selectedDate);
+        
+        // For quarters, adjust the start date to beginning of quarter
+        if (timePeriod === 'quarter') {
+          const quarter = Math.floor(selectedDate.getMonth() / 3);
+          const startMonth = quarter * 3;
+          startDate = new Date(selectedDate.getFullYear(), startMonth, 1);
+        }
+        
+        const startDateStr = startDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        params.append('start_date', startDateStr);
         
         // For different time periods, calculate end date
-        let endDate = new Date(selectedDate);
         switch (timePeriod) {
           case 'day':
             // Same day
@@ -142,8 +152,11 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
             endDate.setDate(0); // Last day of the month
             break;
           case 'quarter':
-            endDate.setMonth(selectedDate.getMonth() + 3);
-            endDate.setDate(0);
+            // Calculate proper quarter boundaries
+            const quarter = Math.floor(selectedDate.getMonth() / 3);
+            const startMonth = quarter * 3;
+            const endMonth = startMonth + 2;
+            endDate = new Date(selectedDate.getFullYear(), endMonth + 1, 0); // Last day of the last month in quarter
             break;
           case 'year':
             endDate.setFullYear(selectedDate.getFullYear() + 1);
@@ -188,7 +201,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
     { id: 0, name: 'Upload Data', icon: '📁', description: 'Upload camera event data' },
     { id: 1, name: 'Analytics', icon: '📊', description: 'View detailed analytics' },
     { id: 2, name: 'Charts', icon: '📈', description: 'Dwell time analytics charts' },
-    { id: 3, name: 'Event Table', icon: '📋', description: 'Browse event data' },
+    { id: 3, name: 'Foot Traffic', icon: '🚶', description: 'Foot traffic analytics charts' },
+    { id: 4, name: 'Event Table', icon: '📋', description: 'Browse event data' },
   ];
 
   return (
@@ -389,6 +403,20 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
             )}
 
             {activeTab === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">
+                    Foot Traffic Analytics
+                  </h3>
+                  <p className="text-secondary-600">
+                    Analyze visitor patterns and traffic flow across different time periods and demographics.
+                  </p>
+                </div>
+                <FootTrafficAnalytics />
+              </div>
+            )}
+
+            {activeTab === 4 && (
               <div className="space-y-6">
                 <div>
                   <h3 className="text-xl font-semibold text-secondary-900 mb-2">

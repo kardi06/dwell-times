@@ -3726,3 +3726,806 @@ The story provides a complete implementation plan for creating beautiful, intera
 
 ---
 
+_**User**_
+
+ok let's make next story, the goal is to make chart like this  @foot-trafic.png .
+almost same like story 1.7
+still using table camera_events, we want to know how many people came,
+the important column are person_id, gender_outcome, utc_time_started_readable, utc_time_ended_readable, camera_description
+
+so want to see traffic (count) using unique person_id, grou by gender , and utc_time_started_readable group by hourly from 10 AM to 10 PM, 
+user can filter by day, weekly, monthly, yearly and filter by camera_description (if not choose, count all camera) , and user can choose to see chart by hourly (10 AM - 10PM) or day (monday to sunday) .
+
+make story for it. don't make any change if you don't understant minimum 95% , ask me if you don't understand, if understand just do the story
+
+---
+
+_**Assistant**_
+
+I understand 95%+ of your requirements. Let me clarify a few points to ensure 100% accuracy:
+
+1. **Chart Type**: You want a line chart similar to the foot traffic image, showing traffic count (unique person_id) over time, correct?
+
+2. **Time Grouping**: 
+   - **Hourly view**: 10 AM to 10 PM (12 hours) on X-axis
+   - **Daily view**: Monday to Sunday (7 days) on X-axis
+   - User can toggle between these two views, correct?
+
+3. **Data Aggregation**:
+   - Count unique `person_id` (not total events)
+   - Group by `gender_outcome` (Male, Female, Other)
+   - Group by time (hourly or daily)
+   - Filter by `camera_description` (optional)
+
+4. **Filters**:
+   - Time period: Day, Weekly, Monthly, Yearly
+   - Camera filter: Specific camera or "All cameras"
+   - View type: Hourly (10 AM - 10 PM) vs Daily (Mon-Sun)
+
+5. **Chart Series**: Three lines - Male (blue), Female (red), Other (yellow/green), similar to the image showing "Kids" but we'll use "Other" for null/undefined gender values.
+
+Is this understanding correct? If so, I'll create the story immediately.
+
+---
+
+_**User**_
+
+1. yes
+2. yes, special for filter day, if user choose that, they just can only see hourly view
+3. yes
+4. same like story 1.7 after choose day weekly monthly year -> use can choose date in calendar, 
+5. yes
+
+
+---
+
+_**Assistant**_
+
+Perfect! I understand 100%. Let me create the story for the foot traffic chart:
+
+
+---
+
+<details><summary>Edit file: docs/stories/1.8.foot-traffic-analytics-charts.md</summary>
+
+Creating a new user story for foot traffic analytics charts showing unique person count by gender over time
+
+**Chunk 1**
+Lines added: 244, lines removed: 1
+
+```diff
+@@ -1,1 +1,244 @@
+- 
++ # Story 1.8: Foot Traffic Analytics Charts
++ 
++ ## Status
++ Draft
++ 
++ ## Story
++ **As a** user of the Dwell-Insight analytics platform,
++ **I want to** view foot traffic analytics charts showing unique visitor counts by gender over time,
++ **so that** I can analyze visitor patterns and traffic flow across different time periods and demographics.
++ 
++ ## Acceptance Criteria
++ 1. **Chart Implementation:**
++    - [ ] Implement line chart for "Foot Traffic - Average No. of Person Visiting Area by Time"
++    - [ ] Use Chart.js library for beautiful, responsive charts
++    - [ ] Display data for Male, Female, and Other gender categories
++    - [ ] Support both hourly view (10 AM - 10 PM) and daily view (Monday - Sunday)
++ 
++ 2. **Time Period Filtering:**
++    - [ ] Add dropdown filter for time periods: Day, Weekly, Monthly, Yearly
++    - [ ] Chart reloads automatically when time period is selected
++    - [ ] Filter data based on selected time period
++    - [ ] When "Day" is selected, only show hourly view (10 AM - 10 PM)
++ 
++ 3. **Date/Period Selection:**
++    - [ ] When "day" is selected → show date picker (default: today)
++    - [ ] When "week" is selected → show week picker (default: current week)
++    - [ ] When "month" is selected → show month picker (default: current month)
++    - [ ] When "quarter" is selected → show quarter picker (default: current quarter)
++    - [ ] When "year" is selected → show year picker (default: current year)
++    - [ ] Date/period picker appears below existing filters
++    - [ ] Selected date/period displays as readable text
++    - [ ] Use react-datepicker library for consistent date selection
++ 
++ 4. **Camera Filtering:**
++    - [ ] Add dropdown for camera selection
++    - [ ] Include "All Cameras" option as default
++    - [ ] List all available camera_description values
++    - [ ] Filter data based on selected camera
++    - [ ] Chart updates automatically when camera filter changes
++ 
++ 5. **View Type Toggle:**
++    - [ ] Add toggle between "Hourly View" and "Daily View"
++    - [ ] Hourly View: X-axis shows 10 AM to 10 PM (12 hours)
++    - [ ] Daily View: X-axis shows Monday to Sunday (7 days)
++    - [ ] When "Day" time period is selected, disable Daily View option
++    - [ ] Toggle affects chart data aggregation and display
++ 
++ 6. **Data Visualization:**
++    - [ ] X-axis: Time periods (hourly: 10 AM - 10 PM, daily: Mon - Sun)
++    - [ ] Y-axis: Unique person count (based on person_id)
++    - [ ] Series: Gender (Male, Female, Other) with distinct colors
++    - [ ] Handle null/undefined gender values as "Other"
++ 
++ 7. **Chart Interactivity:**
++    - [ ] Hover tooltips showing exact visitor counts
++    - [ ] Responsive design for different screen sizes
++    - [ ] Smooth animations and transitions
++    - [ ] Clear legend with gender color indicators
++ 
++ ## Tasks / Subtasks
++ - [ ] **Task 1: Chart.js Setup and Configuration (AC: 1)**
++   - [ ] Install and configure Chart.js library (if not already done)
++   - [ ] Set up foot traffic chart container components
++   - [ ] Configure chart themes and styling for traffic visualization
++   - [ ] Implement responsive chart layouts
++ 
++ - [ ] **Task 2: Foot Traffic Line Chart Implementation (AC: 1)**
++   - [ ] Create line chart component for foot traffic by gender
++   - [ ] Implement data formatting for gender categories (Male, Female, Other)
++   - [ ] Add chart title and axis labels
++   - [ ] Configure line colors (Male: blue, Female: red, Other: yellow/green)
++ 
++ - [ ] **Task 3: Time Period Filtering (AC: 2)**
++   - [ ] Create dropdown for time period selection (Day, Weekly, Monthly, Yearly)
++   - [ ] Implement time period filtering logic
++   - [ ] Add chart reload functionality when filter changes
++   - [ ] Update chart titles based on selected time period
++ 
++ - [ ] **Task 4: Date/Period Selection Implementation (AC: 3)**
++   - [ ] Install react-datepicker library (if not already done)
++   - [ ] Extend ChartFiltersProps interface with selectedDate and onDateChange
++   - [ ] Implement conditional date picker rendering based on timePeriod
++   - [ ] Add different picker types (date, week, month, quarter, year)
++   - [ ] Handle date formatting for different period types
++   - [ ] Update parent component to handle date selection
++   - [ ] Add proper error handling for invalid dates
++ 
++ - [ ] **Task 5: Camera Filtering (AC: 4)**
++   - [ ] Create dropdown for camera selection
++   - [ ] Fetch available camera_description values from database
++   - [ ] Implement camera filtering logic
++   - [ ] Add "All Cameras" option as default
++   - [ ] Update chart data when camera filter changes
++ 
++ - [ ] **Task 6: View Type Toggle (AC: 5)**
++   - [ ] Create toggle component for Hourly vs Daily view
++   - [ ] Implement hourly view (10 AM - 10 PM, 12 hours)
++   - [ ] Implement daily view (Monday - Sunday, 7 days)
++   - [ ] Disable Daily View when "Day" time period is selected
++   - [ ] Update chart data aggregation based on view type
++ 
++ - [ ] **Task 7: Backend API Development (AC: 6)**
++   - [ ] Create foot traffic analytics endpoint
++   - [ ] Implement SQL aggregation queries for unique person count
++   - [ ] Add time period filtering in backend queries
++   - [ ] Add camera filtering in backend queries
++   - [ ] Add view type filtering (hourly vs daily)
++   - [ ] Optimize queries for large datasets
++ 
++ - [ ] **Task 8: Data Integration and Performance (AC: 7)**
++   - [ ] Connect frontend charts to backend API
++   - [ ] Implement loading states and error handling
++   - [ ] Add data refresh functionality
++   - [ ] Optimize chart rendering for large datasets
++   - [ ] Handle real-time updates when new data is uploaded
++ 
++ ## Dev Notes
++ 
++ ### Data Models
++ **Foot Traffic Chart Data Interface:**
++ ```typescript
++ interface FootTrafficDataPoint {
++   time_period: string; // "10 AM", "11 AM", ... "10 PM" or "Monday", "Tuesday", ... "Sunday"
++   male_count: number; // unique person_id count for males
++   female_count: number; // unique person_id count for females
++   other_count: number; // unique person_id count for others
++   total_count: number; // total unique person_id count
++ }
++ 
++ interface FootTrafficChartConfig {
++   timePeriod: 'day' | 'weekly' | 'monthly' | 'yearly';
++   selectedDate: Date | null;
++   cameraFilter: string; // camera_description or "all"
++   viewType: 'hourly' | 'daily';
++ }
++ ```
++ 
++ **Camera Events Schema (Key Columns):**
++ - `person_id` (VARCHAR(100), NOT NULL) - for unique counting
++ - `gender_outcome` (VARCHAR(20), nullable) - for gender grouping
++ - `utc_time_started_readable` (timestamp) - for time grouping
++ - `utc_time_ended_readable` (timestamp) - for time validation
++ - `camera_description` (VARCHAR(100)) - for camera filtering
++ 
++ ### API Specifications
++ **Foot Traffic Chart Data Endpoint:**
++ - `GET /api/v1/analytics/foot-traffic-data`
++ - Query parameters: time_period, selected_date, camera_filter, view_type
++ - Returns aggregated foot traffic data for chart visualization
++ - Supports filtering by time period, date, camera, and view type
++ 
++ **Camera List Endpoint:**
++ - `GET /api/v1/analytics/cameras`
++ - Returns list of available camera_description values
++ - Used for camera filter dropdown
++ 
++ ### Component Specifications
++ **Chart Components:**
++ - Location: `frontend/src/components/Dashboard/Charts/`
++ - Components: FootTrafficChart, FootTrafficFilters
++ - Props: `data: FootTrafficDataPoint[]`, `config: FootTrafficChartConfig`
++ 
++ **FootTrafficFilters Component:**
++ - Time period dropdown (Day, Weekly, Monthly, Yearly)
++ - Date picker (conditional based on time period)
++ - Camera filter dropdown (All Cameras + specific cameras)
++ - View type toggle (Hourly vs Daily)
++ - Props: `config: FootTrafficChartConfig`, `onConfigChange: (config: FootTrafficChartConfig) => void`
++ 
++ ### File Locations
++ - `frontend/src/components/Dashboard/Charts/FootTrafficChart.tsx` - Main chart component
++ - `frontend/src/components/Dashboard/Charts/FootTrafficFilters.tsx` - Filter components
++ - `frontend/src/hooks/useFootTrafficData.ts` - Custom hook for data fetching
++ - `backend/app/api/endpoints/analytics.py` - Foot traffic API endpoints
++ - `backend/app/services/foot_traffic_aggregator.py` - Foot traffic data aggregation service
++ 
++ ### SQL Aggregation Logic
++ **Hourly View (10 AM - 10 PM):**
++ ```sql
++ SELECT 
++   EXTRACT(HOUR FROM utc_time_started_readable) as hour,
++   gender_outcome,
++   COUNT(DISTINCT person_id) as unique_count
++ FROM camera_events 
++ WHERE EXTRACT(HOUR FROM utc_time_started_readable) BETWEEN 10 AND 22
++ GROUP BY hour, gender_outcome
++ ORDER BY hour
++ ```
++ 
++ **Daily View (Monday - Sunday):**
++ ```sql
++ SELECT 
++   EXTRACT(DOW FROM utc_time_started_readable) as day_of_week,
++   gender_outcome,
++   COUNT(DISTINCT person_id) as unique_count
++ FROM camera_events 
++ GROUP BY day_of_week, gender_outcome
++ ORDER BY day_of_week
++ ```
++ 
++ ### Technical Constraints
++ - Must use Chart.js library for chart implementation
++ - Should handle large datasets efficiently with proper data aggregation
++ - Must support responsive design for different screen sizes
++ - Should provide smooth animations and transitions
++ - Must handle null/undefined gender values as "Other"
++ - Must use react-datepicker for date selection
++ - Should maintain existing filter styling and layout consistency
++ - Must handle different date formats for different time periods
++ - Must count unique person_id (not total events)
++ - Should optimize queries for unique person counting
++ 
++ ### Testing Requirements
++ - Unit tests for foot traffic data aggregation logic
++ - Integration tests for foot traffic API endpoints
++ - Frontend component tests for chart rendering and interactions
++ - Performance tests for large dataset chart rendering
++ - Visual regression tests for chart styling and responsiveness
++ 
++ ## Testing
++ - Unit tests for foot traffic data aggregation
++ - Integration tests for foot traffic API endpoints
++ - Frontend component tests for chart rendering
++ - Performance tests for large datasets
++ - Visual regression tests for chart styling
++ 
++ ## Change Log
++ | Date | Version | Description | Author |
++ |------|---------|-------------|--------|
++ | 2025-01-29 | 1.0 | Initial story creation | SM |
++ 
++ ## Dev Agent Record
++ 
++ ### Agent Model Used
++ Claude Sonnet 4
++ 
++ ### Debug Log References
++ - None yet
++ 
++ ### Completion Notes List
++ - None yet
++ 
++ ### File List
++ - None yet 
+```
+
+</details>
+
+---
+
+Perfect! I've created **Story 1.8: Foot Traffic Analytics Charts**. Here's a summary of what the story covers:
+
+## Story 1.8: Foot Traffic Analytics Charts
+
+### Key Features:
+
+**1. Chart Implementation:**
+- ✅ **Line Chart:** "Foot Traffic - Average No. of Person Visiting Area by Time"
+- ✅ **Chart.js Library:** Beautiful, responsive charts with smooth animations
+- ✅ **Gender Categories:** Male (blue), Female (red), Other (yellow/green)
+- ✅ **Dual View Types:** Hourly (10 AM - 10 PM) and Daily (Monday - Sunday)
+
+**2. Time Period Filtering:**
+- ✅ **Dropdown Filter:** Day, Weekly, Monthly, Yearly
+- ✅ **Auto-Reload:** Charts reload automatically when time period changes
+- ✅ **Special Rule:** When "Day" is selected, only show hourly view (10 AM - 10 PM)
+
+**3. Date/Period Selection:**
+- ✅ **Conditional Date Pickers:** Based on time period selection
+- ✅ **react-datepicker Library:** Consistent, accessible date selection
+- ✅ **Readable Display:** Shows selected date/period as readable text
+
+**4. Camera Filtering:**
+- ✅ **Camera Dropdown:** Lists all available camera_description values
+- ✅ **"All Cameras" Option:** Default selection for comprehensive view
+- ✅ **Auto-Update:** Chart updates when camera filter changes
+
+**5. View Type Toggle:**
+- ✅ **Hourly View:** X-axis shows 10 AM to 10 PM (12 hours)
+- ✅ **Daily View:** X-axis shows Monday to Sunday (7 days)
+- ✅ **Smart Disable:** Daily View disabled when "Day" time period selected
+
+**6. Data Visualization:**
+- ✅ **X-axis:** Time periods (hourly: 10 AM - 10 PM, daily: Mon - Sun)
+- ✅ **Y-axis:** Unique person count (based on person_id)
+- ✅ **Series:** Gender categories with distinct colors
+- ✅ **Null Handling:** Null/undefined values mapped to "Other"
+
+### Technical Approach:
+
+**8 Main Tasks:**
+1. **Chart.js Setup** - Configure Chart.js for foot traffic visualization
+2. **Foot Traffic Line Chart** - Main chart component with gender series
+3. **Time Period Filtering** - Dropdown with auto-reload functionality
+4. **Date/Period Selection** - Conditional date pickers with react-datepicker
+5. **Camera Filtering** - Camera dropdown with "All Cameras" option
+6. **View Type Toggle** - Hourly vs Daily view with smart disable logic
+7. **Backend API Development** - Foot traffic endpoints with SQL aggregation
+8. **Data Integration** - Connect frontend to backend with performance optimization
+
+### Key Technical Details:
+
+**Data Aggregation:**
+- **Unique Person Counting:** Uses `COUNT(DISTINCT person_id)` not total events
+- **Gender Grouping:** Groups by `gender_outcome` (Male, Female, Other)
+- **Time Grouping:** Hourly (10-22) or Daily (0-6 for Mon-Sun)
+- **Camera Filtering:** Optional filter by `camera_description`
+
+**SQL Logic:**
+- **Hourly View:** `EXTRACT(HOUR FROM utc_time_started_readable) BETWEEN 10 AND 22`
+- **Daily View:** `EXTRACT(DOW FROM utc_time_started_readable)`
+- **Unique Count:** `COUNT(DISTINCT person_id)`
+
+**Chart Colors:**
+- **Male:** Blue line (like the image)
+- **Female:** Red line (like the image)
+- **Other:** Yellow/Green line (replacing "Kids" from image)
+
+The story provides a complete implementation plan for creating beautiful foot traffic analytics charts that match the design shown in the image, with comprehensive filtering capabilities and smart view type toggling.
+
+---
+
+_**User**_
+
+make story to divide this file @analytics.py into multiple without breaking the apps, so we can easily maintain and testing it. don;t make anychange if you dotn understant minimu 95% , ask me
+
+---
+
+_**Assistant**_
+
+I understand 95%+ of your requirements. Let me clarify a few points to ensure 100% accuracy:
+
+1. **File Division Strategy**: You want to split the large `analytics.py` file (1066 lines) into multiple smaller, focused files for better maintainability and testing, correct?
+
+2. **Division Approach**: Based on the current endpoints, I see these logical groupings:
+   - **File Upload & Processing** (`/upload-csv`, `/calculate-dwell-times`)
+   - **KPI & Basic Analytics** (`/kpi-metrics`, `/comprehensive-analytics`)
+   - **Occupancy Analytics** (`/occupancy-analytics`)
+   - **Dwell Time Analytics** (`/dwell-time-analytics`, `/aggregated-dwell-time`)
+   - **Event Management** (`/events` - the large aggregated events endpoint)
+   - **Demographic Analytics** (`/demographic-insights`, `/demographic-distribution`)
+   - **Chart Data** (`/chart-data`, `/foot-traffic-data`)
+   - **Camera Management** (`/cameras`)
+
+3. **Maintenance Strategy**: 
+   - Keep the main `analytics.py` as a router that imports and includes all the sub-routers
+   - Each sub-file will be a separate router with its own endpoints
+   - Maintain the same API structure so frontend doesn't break
+
+4. **Testing Benefits**: Each smaller file can have its own focused tests
+
+5. **No Breaking Changes**: All existing endpoints will work exactly the same, just organized better
+
+Is this understanding correct? If so, I'll create the story immediately.
+
+---
+
+_**User**_
+
+1. yes
+2. yes
+3. corect
+4. yes, but let's make the testing later
+5. yes
+
+---
+
+_**Assistant**_
+
+Perfect! I understand 100%. Let me create the story for refactoring the analytics.py file:
+
+
+---
+
+<details><summary>Edit file: docs/stories/1.9.analytics-api-refactoring.md</summary>
+
+Creating a new user story for refactoring the large analytics.py file into multiple smaller, focused files
+
+**Chunk 1**
+Lines added: 258, lines removed: 1
+
+```diff
+@@ -1,1 +1,258 @@
+- 
++ # Story 1.9: Analytics API Refactoring
++ 
++ ## Status
++ Draft
++ 
++ ## Story
++ **As a** developer working on the Dwell-Insight analytics platform,
++ **I want to** refactor the large analytics.py file into multiple smaller, focused files,
++ **so that** the codebase becomes more maintainable, testable, and easier to understand.
++ 
++ ## Acceptance Criteria
++ 1. **File Division:**
++    - [ ] Split analytics.py (1066 lines) into 8 focused modules
++    - [ ] Maintain all existing API endpoints without breaking changes
++    - [ ] Keep main analytics.py as a router that imports sub-routers
++    - [ ] Each sub-module handles a specific domain of analytics
++ 
++ 2. **Module Organization:**
++    - [ ] **File Upload & Processing** (`upload_analytics.py`)
++    - [ ] **KPI & Basic Analytics** (`kpi_analytics.py`)
++    - [ ] **Occupancy Analytics** (`occupancy_analytics.py`)
++    - [ ] **Dwell Time Analytics** (`dwell_time_analytics.py`)
++    - [ ] **Event Management** (`event_analytics.py`)
++    - [ ] **Demographic Analytics** (`demographic_analytics.py`)
++    - [ ] **Chart Data** (`chart_analytics.py`)
++    - [ ] **Camera Management** (`camera_analytics.py`)
++ 
++ 3. **Router Integration:**
++    - [ ] Main analytics.py becomes a router that includes all sub-routers
++    - [ ] All existing endpoints maintain their exact paths and functionality
++    - [ ] No changes required in frontend or other consuming services
++    - [ ] Proper error handling and logging maintained across all modules
++ 
++ 4. **Code Quality:**
++    - [ ] Each module has focused responsibility and clear purpose
++    - [ ] Consistent import structure and dependency management
++    - [ ] Maintain existing error handling patterns
++    - [ ] Keep all existing logging and debugging functionality
++ 
++ 5. **Documentation:**
++    - [ ] Update module docstrings to reflect new organization
++    - [ ] Maintain existing endpoint documentation
++    - [ ] Add clear module-level documentation
++ 
++ ## Tasks / Subtasks
++ - [ ] **Task 1: Create File Upload & Processing Module (AC: 1, 2)**
++   - [ ] Create `backend/app/api/analytics/upload_analytics.py`
++   - [ ] Move `/upload-csv` and `/calculate-dwell-times` endpoints
++   - [ ] Include all related imports and dependencies
++   - [ ] Maintain existing error handling and validation
++ 
++ - [ ] **Task 2: Create KPI & Basic Analytics Module (AC: 1, 2)**
++   - [ ] Create `backend/app/api/analytics/kpi_analytics.py`
++   - [ ] Move `/kpi-metrics` and `/comprehensive-analytics` endpoints
++   - [ ] Include AnalyticsService imports and dependencies
++   - [ ] Maintain existing date parsing and validation logic
++ 
++ - [ ] **Task 3: Create Occupancy Analytics Module (AC: 1, 2)**
++   - [ ] Create `backend/app/api/analytics/occupancy_analytics.py`
++   - [ ] Move `/occupancy-analytics` endpoint
++   - [ ] Include time period validation and AnalyticsService dependencies
++   - [ ] Maintain existing parameter validation
++ 
++ - [ ] **Task 4: Create Dwell Time Analytics Module (AC: 1, 2)**
++   - [ ] Create `backend/app/api/analytics/dwell_time_analytics.py`
++   - [ ] Move `/dwell-time-analytics` and `/aggregated-dwell-time` endpoints
++   - [ ] Include DwellTimeEngine imports and dependencies
++   - [ ] Maintain existing group_by validation and processing logic
++ 
++ - [ ] **Task 5: Create Event Management Module (AC: 1, 2)**
++   - [ ] Create `backend/app/api/analytics/event_analytics.py`
++   - [ ] Move `/events` endpoint (the large aggregated events endpoint)
++   - [ ] Include all complex filtering, sorting, and pagination logic
++   - [ ] Maintain existing debug logging and data formatting functions
++ 
++ - [ ] **Task 6: Create Demographic Analytics Module (AC: 1, 2)**
++   - [ ] Create `backend/app/api/analytics/demographic_analytics.py`
++   - [ ] Move `/demographic-insights` and `/demographic-distribution` endpoints
++   - [ ] Include demographic grouping and aggregation logic
++   - [ ] Maintain existing null value handling for gender/age groups
++ 
++ - [ ] **Task 7: Create Chart Data Module (AC: 1, 2)**
++   - [ ] Create `backend/app/api/analytics/chart_analytics.py`
++   - [ ] Move `/chart-data` and `/foot-traffic-data` endpoints
++   - [ ] Include chart data aggregation and formatting logic
++   - [ ] Maintain existing time period and metric type handling
++ 
++ - [ ] **Task 8: Create Camera Management Module (AC: 1, 2)**
++   - [ ] Create `backend/app/api/analytics/camera_analytics.py`
++   - [ ] Move `/cameras` endpoint
++   - [ ] Include camera list querying and filtering logic
++   - [ ] Maintain existing distinct query functionality
++ 
++ - [ ] **Task 9: Refactor Main Analytics Router (AC: 3)**
++   - [ ] Update main `backend/app/api/analytics.py` to be a router
++   - [ ] Import and include all sub-routers
++   - [ ] Maintain existing router prefix and tags
++   - [ ] Ensure all endpoints are properly registered
++ 
++ - [ ] **Task 10: Update Imports and Dependencies (AC: 4)**
++   - [ ] Update all import statements in new modules
++   - [ ] Ensure consistent dependency management
++   - [ ] Maintain existing error handling patterns
++   - [ ] Update any relative imports as needed
++ 
++ - [ ] **Task 11: Documentation and Testing Preparation (AC: 5)**
++   - [ ] Add module-level docstrings to all new files
++   - [ ] Update existing endpoint documentation
++   - [ ] Ensure all logging statements are preserved
++   - [ ] Prepare structure for future focused testing
++ 
++ ## Dev Notes
++ 
++ ### File Structure
++ **New Directory Structure:**
++ ```
++ backend/app/api/analytics/
++ ├── __init__.py
++ ├── upload_analytics.py          # File upload and processing
++ ├── kpi_analytics.py            # KPI and basic analytics
++ ├── occupancy_analytics.py       # Occupancy analytics
++ ├── dwell_time_analytics.py      # Dwell time analytics
++ ├── event_analytics.py          # Event management (largest module)
++ ├── demographic_analytics.py     # Demographic analytics
++ ├── chart_analytics.py          # Chart data endpoints
++ ├── camera_analytics.py         # Camera management
++ └── router.py                   # Main router (renamed from analytics.py)
++ ```
++ 
++ ### Module Responsibilities
++ 
++ **1. upload_analytics.py:**
++ - `/upload-csv` - CSV file upload and processing
++ - `/calculate-dwell-times` - Manual dwell time calculation
++ - Dependencies: CSVProcessor, DwellTimeEngine, AnalyticsService
++ 
++ **2. kpi_analytics.py:**
++ - `/kpi-metrics` - KPI metrics retrieval
++ - `/comprehensive-analytics` - Comprehensive analytics
++ - Dependencies: AnalyticsService
++ 
++ **3. occupancy_analytics.py:**
++ - `/occupancy-analytics` - Occupancy analytics by time periods
++ - Dependencies: AnalyticsService
++ 
++ **4. dwell_time_analytics.py:**
++ - `/dwell-time-analytics` - Dwell time analytics grouped by dimension
++ - `/aggregated-dwell-time` - Aggregated dwell time statistics
++ - Dependencies: DwellTimeEngine
++ 
++ **5. event_analytics.py:**
++ - `/events` - Aggregated events with complex filtering
++ - Dependencies: CameraEvent model, complex SQL queries
++ 
++ **6. demographic_analytics.py:**
++ - `/demographic-insights` - Demographic insights and analytics
++ - `/demographic-distribution` - Demographic distribution analytics
++ - Dependencies: CameraEvent model, demographic grouping
++ 
++ **7. chart_analytics.py:**
++ - `/chart-data` - Chart data for dwell time analytics
++ - `/foot-traffic-data` - Foot traffic analytics data
++ - Dependencies: CameraEvent model, chart data aggregation
++ 
++ **8. camera_analytics.py:**
++ - `/cameras` - List of available camera descriptions
++ - Dependencies: CameraEvent model
++ 
++ ### Router Integration
++ **Main Router (router.py):**
++ ```python
++ from fastapi import APIRouter
++ from .upload_analytics import router as upload_router
++ from .kpi_analytics import router as kpi_router
++ from .occupancy_analytics import router as occupancy_router
++ from .dwell_time_analytics import router as dwell_router
++ from .event_analytics import router as event_router
++ from .demographic_analytics import router as demographic_router
++ from .chart_analytics import router as chart_router
++ from .camera_analytics import router as camera_router
++ 
++ router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
++ 
++ # Include all sub-routers
++ router.include_router(upload_router)
++ router.include_router(kpi_router)
++ router.include_router(occupancy_router)
++ router.include_router(dwell_router)
++ router.include_router(event_router)
++ router.include_router(demographic_router)
++ router.include_router(chart_router)
++ router.include_router(camera_router)
++ ```
++ 
++ ### Import Structure
++ **Each module will have consistent imports:**
++ ```python
++ from fastapi import APIRouter, Depends, HTTPException, Query
++ from sqlalchemy.orm import Session
++ from sqlalchemy import func, extract
++ from typing import Optional
++ from datetime import datetime, timedelta
++ import logging
++ 
++ from ...core.database import get_db
++ from ...models.camera_events import CameraEvent
++ from ...services.analytics_service import AnalyticsService
++ from ...core.exceptions import DataValidationError, ProcessingError, AnalyticsError
++ 
++ logger = logging.getLogger(__name__)
++ 
++ router = APIRouter()
++ ```
++ 
++ ### Error Handling
++ - Maintain all existing error handling patterns
++ - Keep HTTPException status codes consistent
++ - Preserve all logging statements
++ - Maintain existing validation logic
++ 
++ ### Testing Preparation
++ - Each module will be independently testable
++ - Structure allows for focused unit tests per module
++ - Integration tests can test the main router
++ - Mock dependencies can be easily injected
++ 
++ ### Migration Strategy
++ 1. Create new modules one by one
++ 2. Test each module independently
++ 3. Update main router to include new modules
++ 4. Verify all endpoints work correctly
++ 5. Remove old analytics.py file
++ 6. Update any import references
++ 
++ ## Testing
++ - Unit tests for each module (future task)
++ - Integration tests for main router
++ - End-to-end tests for all endpoints
++ - Performance tests for large queries
++ 
++ ## Change Log
++ | Date | Version | Description | Author |
++ |------|---------|-------------|--------|
++ | 2025-01-29 | 1.0 | Initial story creation | SM |
++ 
++ ## Dev Agent Record
++ 
++ ### Agent Model Used
++ Claude Sonnet 4
++ 
++ ### Debug Log References
++ - None yet
++ 
++ ### Completion Notes List
++ - None yet
++ 
++ ### File List
++ - None yet 
+```
+
+</details>
+
+---
+
+Perfect! I've created **Story 1.9: Analytics API Refactoring**. Here's a summary of what the story covers:
+
+## Story 1.9: Analytics API Refactoring
+
+### Key Objectives:
+
+**1. File Division Strategy:**
+- ✅ **Split 1066-line analytics.py** into 8 focused modules
+- ✅ **Maintain all existing endpoints** without breaking changes
+- ✅ **Keep main analytics.py as router** that imports sub-routers
+- ✅ **Each module handles specific domain** of analytics
+
+**2. Module Organization:**
+- ✅ **upload_analytics.py** - File upload and processing endpoints
+- ✅ **kpi_analytics.py** - KPI and basic analytics endpoints
+- ✅ **occupancy_analytics.py** - Occupancy analytics endpoint
+- ✅ **dwell_time_analytics.py** - Dwell time analytics endpoints
+- ✅ **event_analytics.py** - Event management (largest module)
+- ✅ **demographic_analytics.py** - Demographic analytics endpoints
+- ✅ **chart_analytics.py** - Chart data endpoints
+- ✅ **camera_analytics.py** - Camera management endpoint
+
+**3. Router Integration:**
+- ✅ **Main analytics.py becomes router** that includes all sub-routers
+- ✅ **All endpoints maintain exact paths** and functionality
+- ✅ **No frontend changes required** - completely transparent
+- ✅ **Proper error handling** maintained across all modules
+
+### Technical Approach:
+
+**11 Main Tasks:**
+1. **Create 8 focused modules** - Each handling specific analytics domain
+2. **Refactor main router** - Update analytics.py to import and include sub-routers
+3. **Update imports and dependencies** - Ensure consistent structure
+4. **Documentation and testing preparation** - Add module-level documentation
+
+**New Directory Structure:**
+```
+backend/app/api/analytics/
+├── __init__.py
+├── upload_analytics.py          # File upload and processing
+├── kpi_analytics.py            # KPI and basic analytics
+├── occupancy_analytics.py       # Occupancy analytics
+├── dwell_time_analytics.py      # Dwell time analytics
+├── event_analytics.py          # Event management (largest module)
+├── demographic_analytics.py     # Demographic analytics
+├── chart_analytics.py          # Chart data endpoints
+├── camera_analytics.py         # Camera management
+└── router.py                   # Main router (renamed from analytics.py)
+```
+
+### Key Benefits:
+
+**1. Maintainability:**
+- Each module has focused responsibility
+- Easier to locate and modify specific functionality
+- Clear separation of concerns
+
+**2. Testability:**
+- Each module can be tested independently
+- Focused unit tests per module
+- Easier mocking and dependency injection
+
+**3. Code Quality:**
+- Consistent import structure
+- Maintained error handling patterns
+- Preserved logging and debugging functionality
+
+**4. No Breaking Changes:**
+- All existing endpoints work exactly the same
+- Frontend requires no changes
+- API contracts remain unchanged
+
+### Migration Strategy:
+1. Create new modules one by one
+2. Test each module independently
+3. Update main router to include new modules
+4. Verify all endpoints work correctly
+5. Remove old analytics.py file
+6. Update any import references
+
+The story provides a complete refactoring plan that will make the analytics API much more maintainable and testable while preserving all existing functionality.
+
+---
+

@@ -59,7 +59,10 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
         });
       case 'quarter':
         const quarter = Math.floor((date.getMonth() / 3)) + 1;
-        return `Q${quarter} ${date.getFullYear()}`;
+        const startMonth = (quarter - 1) * 3;
+        const startDate = new Date(date.getFullYear(), startMonth, 1);
+        const endDate = new Date(date.getFullYear(), startMonth + 2, 0);
+        return `Q${quarter} ${date.getFullYear()} (${startDate.toLocaleDateString('en-US', { month: 'short' })} - ${endDate.toLocaleDateString('en-US', { month: 'short' })})`;
       case 'year':
         return date.getFullYear().toString();
       default:
@@ -79,7 +82,7 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
         return new Date(now.getFullYear(), now.getMonth(), 1);
       case 'quarter':
         const quarter = Math.floor((now.getMonth() / 3));
-        return new Date(now.getFullYear(), quarter * 3, 1);
+        return new Date(now.getFullYear(), quarter * 3, 1); // Start of current quarter
       case 'year':
         return new Date(now.getFullYear(), 0, 1);
       default:
