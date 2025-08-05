@@ -4,6 +4,23 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Primary Colors
+        'primary-white': '#FFFFFF',
+        'primary-black': '#000000',
+        'primary-gray': '#F5F5F5',
+        
+        // Accent Colors
+        'accent-teal': '#E6F7FF',
+        'accent-purple': '#F0F0FF',
+        'accent-yellow': '#FFF7E6',
+        'accent-orange': '#FF7A45',
+        
+        // Status Colors
+        'success-green': '#52C41A',
+        'error-red': '#FF4D4F',
+        'warning-orange': '#FA8C16',
+        
+        // Legacy colors for backward compatibility
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',

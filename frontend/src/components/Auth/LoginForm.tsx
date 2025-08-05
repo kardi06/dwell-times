@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Input, Alert, Card } from '../ui';
+import { Button, Card, Input, Alert } from '../ui';
 
 interface LoginFormProps {
   onLogin: (token: string) => void;
@@ -84,7 +84,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
         </div>
 
         {/* Login Form Card */}
-        <Card variant="elevated" className="backdrop-blur-sm bg-white/95">
+        <Card variant="default" className="backdrop-blur-sm bg-white/95">
           <div className="p-8">
             <div className="text-center mb-6">
               <h2 className="text-2xl font-semibold text-secondary-900 mb-2">
@@ -107,7 +107,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
                 label="Username"
                 placeholder="Enter your username"
                 value={username}
-                onChange={setUsername}
+                onChange={(e) => setUsername(e.target.value)}
                 error={validationErrors.username}
                 disabled={loading}
                 required
@@ -119,7 +119,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
                 type="password"
                 placeholder="Enter your password"
                 value={password}
-                onChange={setPassword}
+                onChange={(e) => setPassword(e.target.value)}
                 error={validationErrors.password}
                 disabled={loading}
                 required
@@ -128,11 +128,10 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin }) => {
 
               <Button
                 type="submit"
-                variant="primary"
+                variant="default"
                 size="lg"
-                fullWidth
-                loading={loading}
                 className="mt-8"
+                disabled={loading}
               >
                 {loading ? 'Signing In...' : 'Sign In'}
               </Button>

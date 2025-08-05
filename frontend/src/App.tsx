@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginForm from './components/Auth/LoginForm';
 import Dashboard from './components/Dashboard/Dashboard';
+import UploadPage from './pages/UploadPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import AppLayout from './components/layout/AppLayout';
 
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
@@ -28,13 +32,22 @@ function App() {
   }, [token]);
 
   return (
-    <div className="App min-h-screen bg-gray-100">
-      {isAuthenticated && token ? (
-        <Dashboard token={token} onLogout={handleLogout} />
-      ) : (
-        <LoginForm onLogin={handleLogin} />
-      )}
-    </div>
+    <Router>
+      <div className="App min-h-screen bg-gray-100">
+        {isAuthenticated && token ? (
+          <AppLayout>
+            <Routes>
+              <Route path="/" element={<Dashboard token={token} onLogout={handleLogout} />} />
+              <Route path="/upload" element={<UploadPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AppLayout>
+        ) : (
+          <LoginForm onLogin={handleLogin} />
+        )}
+      </div>
+    </Router>
   );
 }
 

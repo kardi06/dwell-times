@@ -292,7 +292,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
         )}
 
         {/* Main Content Tabs */}
-        <Card variant="elevated" className="overflow-hidden">
+        <Card variant="default" className="overflow-hidden">
           {/* Tab Navigation */}
           <div className="border-b border-secondary-200 bg-secondary-50">
             <nav className="flex space-x-8 px-6" aria-label="Tabs">
@@ -382,7 +382,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
                 {/* Charts Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Bar Chart */}
-                  <Card variant="elevated" className="p-6">
+                  <Card variant="default" className="p-6">
                     <DwellTimeBarChart
                       data={chartData}
                       isLoading={chartLoading}
@@ -391,7 +391,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
                   </Card>
 
                   {/* Line Chart */}
-                  <Card variant="elevated" className="p-6">
+                  <Card variant="default" className="p-6">
                     <DwellTimeLineChart
                       data={chartData}
                       isLoading={chartLoading}

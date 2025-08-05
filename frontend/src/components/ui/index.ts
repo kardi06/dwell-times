@@ -1,5 +1,8 @@
-export { default as Button } from './Button';
-export { default as Card } from './Card';
-export { default as Input } from './Input';
-export { default as Loading } from './Loading';
-export { default as Alert } from './Alert'; 
+export { Button, buttonVariants } from "./button"
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent } from "./card"
+export { Progress } from "./progress"
+export { Avatar, AvatarImage, AvatarFallback } from "./avatar"
+export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator } from "./select"
+export { Input } from "./Input"
+export { Alert, alertVariants } from "./Alert"
+export { default as Loading } from "./Loading"
