@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Alert, Button, Loading } from '../ui';
 import FileUpload from '../FileUpload/FileUpload';
-import KPICards from './KPICards';
+// import KPICards from './KPICards';
 import EventTable from './EventTable';
 import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters } from './Charts';
 import { ChartDataPoint } from './Charts/DwellTimeBarChart';
 import { TimePeriod, MetricType } from './Charts/ChartFilters';
 import { FootTrafficAnalytics } from './FootTrafficAnalytics';
+import MetricCard from './MetricCard';
+import { CircleUserRound, FileVideoCamera, History } from 'lucide-react';
 
 interface DashboardProps {
   token: string;
-  onLogout: () => void;
+  // onLogout: () => void;
 }
 
 interface KPIMetrics {
@@ -34,7 +36,7 @@ interface KPIMetrics {
   }>;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
+const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
   const [loading, setLoading] = useState(false);
@@ -208,7 +210,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-secondary-50 to-primary-50">
       {/* Header */}
-      <header className="bg-white shadow-soft border-b border-secondary-200">
+      {/* <header className="bg-white shadow-soft border-b border-secondary-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-4">
@@ -235,7 +237,6 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onLogout}
                 className="text-secondary-600 hover:text-secondary-900"
               >
                 Logout
@@ -243,7 +244,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
             </div>
           </div>
         </div>
-      </header>
+      </header> */}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* KPI Cards Section */}
@@ -251,11 +252,11 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold text-secondary-900 font-display">
-                Key Performance Indicators
+                Dashboard
               </h2>
-              <p className="text-secondary-600 mt-1">
+              {/* <p className="text-secondary-600 mt-1">
                 Real-time analytics overview
-              </p>
+              </p> */}
             </div>
             <Button
               variant="outline"
@@ -279,8 +280,34 @@ const Dashboard: React.FC<DashboardProps> = ({ token, onLogout }) => {
                 </Card>
               ))}
             </div>
+          ) : !metrics ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500">No data available</p>
+            </div>
           ) : (
-            <KPICards metrics={metrics} loading={loading} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <MetricCard
+                title="Total Visitors"
+                value={metrics.total_unique_visitors || 0}
+                // trend={5.2}
+                icon={<CircleUserRound />}
+                color="teal"
+              />
+              <MetricCard
+                title="Avg Dwell Time"
+                value={`${Math.round((metrics.average_dwell_time || 0) / 60)} min`}
+                // trend={-2.1}
+                icon={<History />}
+                color="yellow"
+              />
+              <MetricCard
+                title="Active Cameras"
+                value={metrics.cameras_with_activity || 0}
+                // trend={8.5}
+                icon={<FileVideoCamera/>}
+                color="purple"
+              />
+            </div>
           )}
         </section>
 

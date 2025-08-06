@@ -37,7 +37,7 @@ const KPICard: React.FC<{
   subtitle?: string;
 }> = ({ title, value, icon, color, loading = false, trend, subtitle }) => (
   <Card
-    variant="elevated"
+    variant="default"
     className="h-full transition-all duration-300 hover:scale-105 hover:shadow-large"
   >
     <div className="p-6">

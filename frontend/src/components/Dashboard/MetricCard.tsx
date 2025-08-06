@@ -6,7 +6,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 interface MetricCardProps {
   title: string;
   value: string | number;
-  trend: number;
+  trend?: number;
   color: 'teal' | 'purple' | 'yellow';
   icon: React.ReactNode;
   loading?: boolean;
@@ -21,8 +21,8 @@ const MetricCard: React.FC<MetricCardProps> = ({
   loading = false
 }) => {
   const getTrendIcon = () => {
-    if (trend > 0) return <TrendingUp className="w-4 h-4 text-success-green" />;
-    if (trend < 0) return <TrendingDown className="w-4 h-4 text-error-red" />;
+    if (trend && trend > 0) return <TrendingUp className="w-4 h-4 text-success-green" />;
+    if (trend && trend < 0) return <TrendingDown className="w-4 h-4 text-error-red" />;
     return <Minus className="w-4 h-4 text-gray-500" />;
   };
 
@@ -60,22 +60,25 @@ const MetricCard: React.FC<MetricCardProps> = ({
     <Card className={`${getColorClasses()} h-32 transition-all duration-200 hover:shadow-md`}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white shadow-sm">
+          <p className="text-xl font-bold text-secondary-900 mb-2">{title}</p>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm">
             {icon}
           </div>
-          <div className="flex items-center space-x-1">
-            {getTrendIcon()}
-            <span className={`text-sm font-medium ${getTrendColor(trend)}`}>
-              {formatTrend(trend)}
-            </span>
-          </div>
+          {trend !== undefined && (
+            <div className="flex items-center space-x-1">
+              {getTrendIcon()}
+              <span className={`text-sm font-medium ${getTrendColor(trend)}`}>
+                {formatTrend(trend)}
+              </span>
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent>
         <CardTitle className="text-2xl font-bold text-gray-900 mb-1">
           {typeof value === 'number' ? formatNumber(value) : value}
         </CardTitle>
-        <p className="text-sm text-gray-600">{title}</p>
+        
       </CardContent>
     </Card>
   );

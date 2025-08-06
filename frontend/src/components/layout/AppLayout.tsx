@@ -7,9 +7,10 @@ const { Content } = Layout;
 
 interface AppLayoutProps {
   children: React.ReactNode;
+  onLogout: () => void;
 }
 
-const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+const AppLayout: React.FC<AppLayoutProps> = ({ children, onLogout }) => {
   const [collapsed, setCollapsed] = useState(false);
 
   const handleToggle = () => {

@@ -35,9 +35,9 @@ function App() {
     <Router>
       <div className="App min-h-screen bg-gray-100">
         {isAuthenticated && token ? (
-          <AppLayout>
+          <AppLayout onLogout={handleLogout}>
             <Routes>
-              <Route path="/" element={<Dashboard token={token} onLogout={handleLogout} />} />
+              <Route path="/" element={<Dashboard token={token}/>} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
