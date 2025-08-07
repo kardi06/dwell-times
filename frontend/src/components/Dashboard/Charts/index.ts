@@ -48,4 +48,6 @@ export { DwellTimeBarChart } from './DwellTimeBarChart';
 export { DwellTimeLineChart } from './DwellTimeLineChart';
 export { ChartFilters } from './ChartFilters';
 export { FootTrafficChart } from './FootTrafficChart';
-export { FootTrafficFilters } from './FootTrafficFilters'; 
+export { FootTrafficFilters } from './FootTrafficFilters';
+export { WaitingTimeChart } from './WaitingTimeChart';
+export { WaitingTimeFilters } from './WaitingTimeFilters'; 

@@ -11,7 +11,7 @@ export interface FootTrafficDataPoint {
 }
 
 export interface FootTrafficChartConfig {
-  timePeriod: 'day' | 'week' | 'month'  | 'year';
+  timePeriod: 'day' | 'weekly' | 'monthly'  | 'yearly';
   selectedDate: Date | null;
   cameraFilter: string; // camera_description or "all"
   viewType: 'hourly' | 'daily';

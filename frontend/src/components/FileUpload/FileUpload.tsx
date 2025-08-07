@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Card, Alert, Button, Loading } from '../ui';
 import { useDropzone } from 'react-dropzone';
+import { analyticsAPI } from '../../services/api';
 
 interface FileUploadProps {
   onFileUpload: (file: File) => Promise<void>;
@@ -64,34 +65,50 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
     try {
       // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 100);
+      // const progressInterval = setInterval(() => {
+      //   setUploadProgress(prev => {
+      //     if (prev >= 90) {
+      //       clearInterval(progressInterval);
+      //       return 90;
+      //     }
+      //     return prev + 10;
+      //   });
+      // }, 100);
 
-      await onFileUpload(selectedFile);
+      // await onFileUpload(selectedFile);
       
-      clearInterval(progressInterval);
+      // clearInterval(progressInterval);
+      // setUploadProgress(100);
+      // setProcessingStatus('Calculating dwell times...');
+      
+      // // Simulate processing progress
+      // const processingInterval = setInterval(() => {
+      //   setProcessingProgress(prev => {
+      //     if (prev >= 100) {
+      //       clearInterval(processingInterval);
+      //       setProcessingStatus('Processing complete!');
+      //       setSuccess('File uploaded and processed successfully! Dwell times calculated.');
+      //       return 100;
+      //     }
+      //     return prev + 20;
+      //   });
+      // }, 200);
+      
+      // setSelectedFile(null);
+      
+      // // Reset progress after a delay
+      // setTimeout(() => {
+      //   setUploadProgress(0);
+      //   setProcessingProgress(0);
+      //   setProcessingStatus('');
+      //   setSuccess('');
+      // }, 5000);
+
+      const response = await analyticsAPI.uploadCSV(selectedFile);
+    
       setUploadProgress(100);
-      setProcessingStatus('Calculating dwell times...');
-      
-      // Simulate processing progress
-      const processingInterval = setInterval(() => {
-        setProcessingProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(processingInterval);
-            setProcessingStatus('Processing complete!');
-            setSuccess('File uploaded and processed successfully! Dwell times calculated.');
-            return 100;
-          }
-          return prev + 20;
-        });
-      }, 200);
+      setProcessingStatus('Processing complete!');
+      setSuccess('File uploaded and processed successfully! Dwell times calculated.');
       
       setSelectedFile(null);
       
@@ -120,7 +137,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     <div className="w-full max-w-2xl mx-auto space-y-6">
       {/* Drop Zone */}
       <Card 
-        variant={isDragActive ? "elevated" : "default"}
+        variant="default"
         className={`
           border-2 border-dashed transition-all duration-300 cursor-pointer
           ${isDragActive 
@@ -160,7 +177,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
 
       {/* Selected File */}
       {selectedFile && (
-        <Card variant="elevated" className="animate-slide-up">
+        <Card variant="default" className="animate-slide-up">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
@@ -189,12 +206,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
             </div>
             
             <Button
-              variant="primary"
+              variant="default"
               size="lg"
               onClick={handleUpload}
               disabled={uploading}
-              loading={uploading}
-              fullWidth
+              // fullWidth
             >
               {uploading ? 'Uploading...' : 'Upload File'}
             </Button>

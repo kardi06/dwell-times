@@ -18,9 +18,9 @@ export const FootTrafficFilters: React.FC<FootTrafficFiltersProps> = ({
 }) => {
   const timePeriodOptions = [
     { value: "day", label: "Day" },
-    { value: "week", label: "week" },
-    { value: "month", label: "month" },
-    { value: "year", label: "year" },
+    { value: "weekly", label: "weekly" },
+    { value: "monthly", label: "monthly" },
+    { value: "yearly", label: "yearly" },
   ];
 
   const viewTypeOptions = [
@@ -42,18 +42,18 @@ export const FootTrafficFilters: React.FC<FootTrafficFiltersProps> = ({
           day: "numeric",
           year: "numeric",
         });
-      case "week":
+      case "weekly":
         const startOfWeek = new Date(date);
         startOfWeek.setDate(date.getDate() - date.getDay());
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
         return `Week of ${startOfWeek.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${endOfWeek.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
-      case "month":
+      case "monthly":
         return date.toLocaleDateString("en-US", {
           month: "long",
           year: "numeric",
         });
-      case "year":
+      case "yearly":
         return date.getFullYear().toString();
       default:
         return date.toLocaleDateString();
@@ -68,11 +68,11 @@ export const FootTrafficFilters: React.FC<FootTrafficFiltersProps> = ({
     switch (period) {
       case "day":
         return now;
-      case "week":
+      case "weekly":
         return now;
-      case "month":
+      case "monthly":
         return new Date(now.getFullYear(), now.getMonth(), 1);
-      case "year":
+      case "yearly":
         return new Date(now.getFullYear(), 0, 1);
       default:
         return now;
@@ -216,9 +216,9 @@ export const FootTrafficFilters: React.FC<FootTrafficFiltersProps> = ({
           <label className="text-sm font-medium text-gray-700 mb-1">
             {config.timePeriod === "day"
               ? "Date"
-              : config.timePeriod === "week"
+              : config.timePeriod === "weekly"
                 ? "Week"
-                : config.timePeriod === "month"
+                : config.timePeriod === "monthly"
                   ? "Month"
                   : "Year"}
           </label>
@@ -229,15 +229,15 @@ export const FootTrafficFilters: React.FC<FootTrafficFiltersProps> = ({
               dateFormat={
                 config.timePeriod === "day"
                   ? "MM/dd/yyyy"
-                  : config.timePeriod === "week"
+                  : config.timePeriod === "weekly"
                     ? "MM/dd/yyyy"
-                    : config.timePeriod === "month"
+                    : config.timePeriod === "monthly"
                       ? "MM/yyyy"
                       : "yyyy"
               }
-              showMonthYearPicker={config.timePeriod === "month"}
-              showYearPicker={config.timePeriod === "year"}
-              showWeekPicker={config.timePeriod === "week"}
+              showMonthYearPicker={config.timePeriod === "monthly"}
+              showYearPicker={config.timePeriod === "yearly"}
+              showWeekPicker={config.timePeriod === "weekly"}
               calendarStartDay={1}
               placeholderText={`Select ${config.timePeriod}`}
               className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

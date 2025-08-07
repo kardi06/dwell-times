@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1',
+  baseURL: import.meta.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -55,6 +55,15 @@ export const analyticsAPI = {
     cameraFilter?: string;
     selectedDate?: string;
   }) => api.get('/analytics/foot-traffic-data', { params }),
+  
+  // Waiting time analytics
+  getWaitingTimeData: (params: {
+    viewType?: 'hourly' | 'daily';
+    startDate?: string;
+    endDate?: string;
+    cameraIds?: string;
+    cameraGroups?: string;
+  }) => api.get('/analytics/waiting-time', { params }),
   
   // Camera list
   getCameras: () => api.get('/analytics/cameras'),

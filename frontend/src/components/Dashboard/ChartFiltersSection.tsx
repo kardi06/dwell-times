@@ -136,7 +136,7 @@ export const ChartFiltersSection: React.FC<ChartFiltersSectionProps> = ({
     if (!config.selectedDate) {
       const newConfig = {
         ...config,
-        selectedDate: getDefaultDate(config.timePeriod)
+        // selectedDate: getDefaultDate(config.timePeriod)
       };
       onConfigChange(newConfig);
     }

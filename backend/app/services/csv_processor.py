@@ -312,6 +312,7 @@ class CSVProcessor:
                 # Camera information
                 camera_id=str(row.get('camera_id', '')),
                 camera_de_node_id=row.get('camera_de_node_id'),
+                camera_group=row.get('camera_group_name'),
                 camera_description=row.get('camera_description'),
                 
                 # Analysis fields

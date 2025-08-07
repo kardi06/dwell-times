@@ -1,23 +1,32 @@
 import React from 'react';
 import { Typography, Card } from 'antd';
 import FileUpload from '../components/FileUpload/FileUpload';
+import { analyticsAPI } from '../services/api';
 
 const { Title } = Typography;
 
 const UploadPage: React.FC = () => {
-  const handleFileUpload = async (file: File) => {
+  // const handleFileUpload = async (file: File) => {
     // Simulate API call
-    console.log('Uploading file:', file.name);
+    // console.log('Uploading file:', file.name);
     
     // In a real implementation, this would call the backend API
     // const formData = new FormData();
     // formData.append('file', file);
     // await axios.post('/api/v1/analytics/upload-csv', formData);
     
-    return new Promise<void>((resolve) => {
-      setTimeout(resolve, 2000); // Simulate upload time
-    });
+    // 
+  const handleFileUpload = async (file: File) => {
+    try {
+      const response = await analyticsAPI.uploadCSV(file);
+      console.log('Upload successful:', response.data);
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Upload failed:', error);
+      throw error;
+    }
   };
+  // };
 
   return (
     <div className="p-6">

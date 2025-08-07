@@ -5,8 +5,9 @@ import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters } from './Charts';
 import { ChartDataPoint } from './Charts/DwellTimeBarChart';
 import { TimePeriod, MetricType } from './Charts/ChartFilters';
 import { FootTrafficAnalytics } from './FootTrafficAnalytics';
+import { WaitingTimeAnalytics } from './WaitingTimeAnalytics';
 import MetricCard from './MetricCard';
-import { CircleUserRound, FileVideoCamera, History } from 'lucide-react';
+import { CircleUserRound, FileVideoCamera, History, Clock } from 'lucide-react';
 // import ChartFiltersSection from './ChartFiltersSection';
 import { FootTrafficChartConfig } from './Charts/FootTrafficChart';
 import { FootTrafficFilters } from './Charts/FootTrafficFilters';
@@ -22,6 +23,11 @@ interface KPIMetrics {
   max_dwell_time?: number;
   total_events_processed?: number;
   cameras_with_activity?: number;
+  waiting_time_metrics?: {
+    total_waiting_people?: number;
+    peak_waiting_period?: string;
+    avg_waiting_time?: number;
+  };
   // Demographic metrics
   gender_analytics?: Array<{
     gender: string;
@@ -50,7 +56,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   const [config, setConfig] = useState<FootTrafficChartConfig>({
-    timePeriod: 'week',
+    timePeriod: 'weekly',
     selectedDate: new Date(),
     cameraFilter: 'all',
     viewType: 'daily'
@@ -75,13 +81,29 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
         }
       });
 
-      if (kpiResponse.ok && demographicResponse.ok) {
+      // Fetch waiting time metrics
+      const waitingTimeResponse = await fetch('http://localhost:8000/api/v1/analytics/waiting-time?view_type=daily', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (kpiResponse.ok && demographicResponse.ok && waitingTimeResponse.ok) {
         const kpiData = await kpiResponse.json();
         const demographicData = await demographicResponse.json();
+        const waitingTimeData = await waitingTimeResponse.json();
+        
+        // Calculate waiting time metrics
+        const totalWaitingPeople = waitingTimeData.data?.reduce((sum: number, item: any) => sum + item.waiting_count, 0) || 0;
         
         // Combine the metrics
         const combinedMetrics = {
           ...kpiData.kpi_metrics,
+          waiting_time_metrics: {
+            total_waiting_people: totalWaitingPeople,
+            peak_waiting_period: 'N/A', // Could be calculated from data
+            avg_waiting_time: 0 // Could be calculated from data
+          },
           gender_analytics: demographicData.demographic_insights?.filter((item: any) => item.gender) || [],
           age_group_analytics: demographicData.demographic_insights?.filter((item: any) => item.age_group) || []
         };
@@ -96,6 +118,16 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
       setLoading(false);
     }
   };
+
+  // Real-time updates - refresh data every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchMetrics();
+      fetchChartData();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchChartData = async () => {
     setChartLoading(true);
@@ -337,6 +369,23 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
               </div>
               <div className="bg-white rounded-lg p-4 shadow-sm">
                 <FootTrafficAnalytics />
+              </div>
+            </div>
+          </Card>
+
+          {/* Waiting Time Analytics */}
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                  Waiting Time Analytics
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Analyze patterns of people waiting more than 10 minutes
+                </p>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <WaitingTimeAnalytics />
               </div>
             </div>
           </Card>
