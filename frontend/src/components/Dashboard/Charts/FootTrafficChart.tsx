@@ -11,7 +11,7 @@ export interface FootTrafficDataPoint {
 }
 
 export interface FootTrafficChartConfig {
-  timePeriod: 'day' | 'weekly' | 'monthly' | 'yearly';
+  timePeriod: 'day' | 'week' | 'month'  | 'year';
   selectedDate: Date | null;
   cameraFilter: string; // camera_description or "all"
   viewType: 'hourly' | 'daily';
@@ -66,14 +66,14 @@ export const FootTrafficChart: React.FC<FootTrafficChartProps> = ({
       tension: 0.4,
       fill: false,
     },
-    {
-      label: 'Other',
-      data: data.map(point => point.other_count),
-      borderColor: chartTheme.colors.other,
-      backgroundColor: chartTheme.colors.other,
-      tension: 0.4,
-      fill: false,
-    }
+    // {
+    //   label: 'Other',
+    //   data: data.map(point => point.other_count),
+    //   borderColor: chartTheme.colors.other,
+    //   backgroundColor: chartTheme.colors.other,
+    //   tension: 0.4,
+    //   fill: false,
+    // }
   ];
 
   const chartData = {

@@ -5901,7 +5901,32 @@ Perfect! I've successfully updated **Story 1.10: Modern Dashboard UI Redesign** 
 2. **Layout Structure**
 3. **Key Metrics Section** (Total Visitor, Avg Dwell Time, Active Camera)
 4. **Analytics Charts** (Dwell Time Chart, Foot Traffic Chart)
-5. **Navigation & Use
+5. **Navigation & User Experience** (Sidebar, Routing, Upload)
+6. **Data Integration**
+
+**Tasks (now 8 instead of 9):**
+1. Setup Design System & Dependencies
+2. Create Layout Structure
+3. Build Key Metrics Cards
+4. Integrate Existing Charts
+5. Enhance Chart Functionality
+6. Implement Navigation & User Controls
+7. Data Integration & API Connection
+8. Responsive Design & Testing
+
+The story now focuses on the core analytics dashboard functionality without the project management features, making it more focused and aligned with your current needs.
+
+---
+
+_**User**_
+
+@DwellTimeBarChart.tsx for this we want the chart to be vertical, and just ouput gender male and female. don't make any change in the file, i want to do it manually
+
+---
+
+_**Assistant**_
+
+
 
 ---
 

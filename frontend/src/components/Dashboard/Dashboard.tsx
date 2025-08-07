@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Alert, Button, Loading } from '../ui';
-import FileUpload from '../FileUpload/FileUpload';
-// import KPICards from './KPICards';
-import EventTable from './EventTable';
+// import EventTable from './EventTable';
 import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters } from './Charts';
 import { ChartDataPoint } from './Charts/DwellTimeBarChart';
 import { TimePeriod, MetricType } from './Charts/ChartFilters';
 import { FootTrafficAnalytics } from './FootTrafficAnalytics';
 import MetricCard from './MetricCard';
 import { CircleUserRound, FileVideoCamera, History } from 'lucide-react';
+// import ChartFiltersSection from './ChartFiltersSection';
+import { FootTrafficChartConfig } from './Charts/FootTrafficChart';
+import { FootTrafficFilters } from './Charts/FootTrafficFilters';
 
 interface DashboardProps {
   token: string;
@@ -37,7 +38,6 @@ interface KPIMetrics {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ token }) => {
-  const [activeTab, setActiveTab] = useState(0);
   const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -48,6 +48,13 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('week');
   const [metricType, setMetricType] = useState<MetricType>('average');
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
+
+  const [config, setConfig] = useState<FootTrafficChartConfig>({
+    timePeriod: 'week',
+    selectedDate: new Date(),
+    cameraFilter: 'all',
+    viewType: 'daily'
+  });
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -87,32 +94,6 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
       setError('Network error while fetching metrics');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleFileUpload = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const response = await fetch('http://localhost:8000/api/v1/analytics/upload-csv', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      if (response.ok) {
-        // Refresh metrics after successful upload
-        await fetchMetrics();
-        await fetchChartData();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Upload failed');
-      }
-    } catch (err: any) {
-      throw new Error(err.message || 'Upload failed');
     }
   };
 
@@ -199,117 +180,34 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
     fetchChartData();
   }, [timePeriod, metricType, selectedDate]);
 
-  const tabs = [
-    { id: 0, name: 'Upload Data', icon: '📁', description: 'Upload camera event data' },
-    { id: 1, name: 'Analytics', icon: '📊', description: 'View detailed analytics' },
-    { id: 2, name: 'Charts', icon: '📈', description: 'Dwell time analytics charts' },
-    { id: 3, name: 'Foot Traffic', icon: '🚶', description: 'Foot traffic analytics charts' },
-    { id: 4, name: 'Event Table', icon: '📋', description: 'Browse event data' },
-  ];
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-secondary-50 to-primary-50">
-      {/* Header */}
-      {/* <header className="bg-white shadow-soft border-b border-secondary-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center justify-center w-10 h-10 bg-primary-600 rounded-lg">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-secondary-900 font-display">
-                  Dwell-Insight Analytics
-                </h1>
-                <p className="text-sm text-secondary-600">
-                  Camera Event Analytics Dashboard
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm text-secondary-600">Welcome back!</p>
-                <p className="text-sm font-medium text-secondary-900">Admin User</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-secondary-600 hover:text-secondary-900"
-              >
-                Logout
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header> */}
-
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* KPI Cards Section */}
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-secondary-900 font-display">
-                Dashboard
-              </h2>
-              {/* <p className="text-secondary-600 mt-1">
-                Real-time analytics overview
-              </p> */}
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Analytics Dashboard
+              </h1>
+              <p className="text-gray-600">
+                Real-time insights and performance metrics
+              </p>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={fetchMetrics}
               disabled={loading}
-              className="flex items-center space-x-2"
+              className="flex items-center space-x-2 shadow-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              <span>Refresh</span>
+              <span>Refresh Data</span>
             </Button>
           </div>
-          
-          {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                <Card key={i} className="animate-pulse">
-                  <div className="h-24 bg-secondary-200 rounded"></div>
-                </Card>
-              ))}
-            </div>
-          ) : !metrics ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500">No data available</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <MetricCard
-                title="Total Visitors"
-                value={metrics.total_unique_visitors || 0}
-                // trend={5.2}
-                icon={<CircleUserRound />}
-                color="teal"
-              />
-              <MetricCard
-                title="Avg Dwell Time"
-                value={`${Math.round((metrics.average_dwell_time || 0) / 60)} min`}
-                // trend={-2.1}
-                icon={<History />}
-                color="yellow"
-              />
-              <MetricCard
-                title="Active Cameras"
-                value={metrics.cameras_with_activity || 0}
-                // trend={8.5}
-                icon={<FileVideoCamera/>}
-                color="purple"
-              />
-            </div>
-          )}
-        </section>
+        </div>
 
         {/* Error Display */}
         {error && (
@@ -318,85 +216,83 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
           </Alert>
         )}
 
-        {/* Main Content Tabs */}
-        <Card variant="default" className="overflow-hidden">
-          {/* Tab Navigation */}
-          <div className="border-b border-secondary-200 bg-secondary-50">
-            <nav className="flex space-x-8 px-6" aria-label="Tabs">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200
-                    ${activeTab === tab.id
-                      ? 'border-primary-500 text-primary-600 bg-white'
-                      : 'border-transparent text-secondary-500 hover:text-secondary-700 hover:border-secondary-300'
-                    }
-                  `}
-                >
-                  <span className="text-lg">{tab.icon}</span>
-                  <span>{tab.name}</span>
-                </button>
+        {/* Metrics Cards Section */}
+        <section className="mb-8">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="h-32 bg-gray-200 rounded-xl"></div>
+                </div>
               ))}
-            </nav>
-          </div>
-
-          {/* Tab Content */}
-          <div className="p-6">
-            {activeTab === 0 && (
-              <div className="space-y-6">
+            </div>
+          ) : !metrics ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4 animate-pulse"></div>
+              <p className="text-gray-500 text-lg">No data available</p>
+              <p className="text-gray-400 text-sm mt-2">Upload some data to see analytics</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <MetricCard
+                title="Total Visitors"
+                value={metrics.total_unique_visitors || 0}
+                icon={<CircleUserRound  />}
+                color="teal"
+              />
+              <MetricCard
+                title="Avg Dwell Time"
+                value={`${Math.round((metrics.average_dwell_time || 0) / 60)} min`}
+                icon={<History  />}
+                color="yellow"
+              />
+              <MetricCard
+                title="Active Cameras"
+                value={metrics.cameras_with_activity || 0}
+                icon={<FileVideoCamera  />}
+                color="purple"
+              />
+            </div>
+          )}
+        </section>
+        {/* <ChartFiltersSection
+          timePeriod={timePeriod}
+          selectedDate={selectedDate}
+          onTimePeriodChange={setTimePeriod}
+          onDateChange={setSelectedDate}
+          availableCameraGroups={[]}
+          availableCameras={[]}
+          config={config}
+          onConfigChange={setConfig}
+          // onRefresh={() => {}}
+          loading={false}
+        /> */}
+        {/* Charts Section */}
+        <section className="grid grid-cols-1 lg:grid-cols-1 gap-8">
+          {/* Dwell Time Chart */}
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">
-                    Upload Camera Event Data
+                  <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                    Dwell Time Analytics
                   </h3>
-                  <p className="text-secondary-600">
-                    Drag and drop a CSV file with camera event data to process and analyze. 
-                    The file should contain columns for camera ID, timestamp, and visitor ID.
+                  <p className="text-gray-600 text-sm">
+                    Visitor engagement patterns over time
                   </p>
                 </div>
-                <FileUpload onFileUpload={handleFileUpload} />
+                {/* <div className="flex items-center space-x-2">
+                  <ChartFilters
+                    timePeriod={timePeriod}
+                    metricType={metricType}
+                    selectedDate={selectedDate}
+                    onTimePeriodChange={setTimePeriod}
+                    onMetricTypeChange={setMetricType}
+                    onDateChange={setSelectedDate}
+                  />
+                </div> */}
               </div>
-            )}
-
-            {activeTab === 1 && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">
-                    Analytics Overview
-                  </h3>
-                  <p className="text-secondary-600">
-                    Detailed analytics and insights will be displayed here.
-                  </p>
-                </div>
-                <div className="bg-secondary-50 rounded-lg p-8 text-center">
-                  <div className="w-16 h-16 bg-secondary-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-secondary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  <h4 className="text-lg font-medium text-secondary-900 mb-2">
-                    Analytics Coming Soon
-                  </h4>
-                  <p className="text-secondary-600">
-                    Advanced analytics features are under development.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 2 && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">
-                    Dwell Time Analytics Charts
-                  </h3>
-                  <p className="text-secondary-600">
-                    Interactive charts showing dwell time patterns by demographics and time periods.
-                  </p>
-                </div>
-                
-                {/* Chart Filters */}
+              <div className='space-y-4'>
                 <ChartFilters
                   timePeriod={timePeriod}
                   metricType={metricType}
@@ -405,59 +301,46 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                   onMetricTypeChange={setMetricType}
                   onDateChange={setSelectedDate}
                 />
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-2 gap-8">
+                {/* Bar Chart */}
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <DwellTimeBarChart
+                    data={chartData}
+                    isLoading={chartLoading}
+                    metricType={metricType}
+                  />
+                </div>
 
-                {/* Charts Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Bar Chart */}
-                  <Card variant="default" className="p-6">
-                    <DwellTimeBarChart
-                      data={chartData}
-                      isLoading={chartLoading}
-                      metricType={metricType}
-                    />
-                  </Card>
-
-                  {/* Line Chart */}
-                  <Card variant="default" className="p-6">
-                    <DwellTimeLineChart
-                      data={chartData}
-                      isLoading={chartLoading}
-                      metricType={metricType}
-                    />
-                  </Card>
+                {/* Line Chart */}
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <DwellTimeLineChart
+                    data={chartData}
+                    isLoading={chartLoading}
+                    metricType={metricType}
+                  />
                 </div>
               </div>
-            )}
+            </div>
+          </Card>
 
-            {activeTab === 3 && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">
-                    Foot Traffic Analytics
-                  </h3>
-                  <p className="text-secondary-600">
-                    Analyze visitor patterns and traffic flow across different time periods and demographics.
-                  </p>
-                </div>
+          {/* Foot Traffic Chart */}
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                  Foot Traffic Analytics
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Visitor flow and traffic patterns
+                </p>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
                 <FootTrafficAnalytics />
               </div>
-            )}
-
-            {activeTab === 4 && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">
-                    Event Data Table
-                  </h3>
-                  <p className="text-secondary-600">
-                    Browse and search through processed camera event data.
-                  </p>
-                </div>
-                <EventTable token={token} />
-              </div>
-            )}
-          </div>
-        </Card>
+            </div>
+          </Card>
+        </section>
       </div>
     </div>
   );

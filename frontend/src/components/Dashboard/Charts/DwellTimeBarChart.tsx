@@ -17,9 +17,14 @@ interface DwellTimeBarChartProps {
   metricType?: 'total' | 'average';
 }
 
+const GENDER_COLORS = {
+  male: '#2196F3',  // blue
+  female: '#FF69B4' // pink
+};
+
 export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
   data,
-  title = 'Average Dwell Time by Gender',
+  // title = 'Average Dwell Time by Gender',
   isLoading = false,
   metricType = 'average'
 }) => {
@@ -41,48 +46,56 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
 
   // Aggregate data by gender
   const genderData = data.reduce((acc, item) => {
-    const gender = item.gender?.toLowerCase() || 'other';
-    if (!acc[gender]) {
-      acc[gender] = { total: 0, count: 0, totalDwell: 0 };
+    const gender = item.gender?.toLowerCase();
+    // if (!acc[gender]) {
+    //   acc[gender] = { total: 0, count: 0, totalDwell: 0 };
+    // }
+    if (gender === 'male' || gender === 'female') {
+      if (!acc[gender]) {
+        acc[gender] = { total: 0, count: 0, totalDwell: 0 };
+      }
+      acc[gender].total += item.avg_dwell_time;
+      acc[gender].count += 1;
+      acc[gender].totalDwell += item.total_dwell_time;
     }
-    acc[gender].total += item.avg_dwell_time;
-    acc[gender].count += 1;
-    acc[gender].totalDwell += item.total_dwell_time;
     return acc;
   }, {} as Record<string, { total: number; count: number; totalDwell: number }>);
 
   // Calculate dwell time by gender based on metric type
   const chartData = {
-    labels: Object.keys(genderData).map(gender => 
-      gender.charAt(0).toUpperCase() + gender.slice(1)
-    ),
+    labels: ['Male', 'Female'],
     datasets: [
       {
         label: metricType === 'total' ? 'Total Dwell Time (Hours)' : 'Average Dwell Time (Hours)',
-        data: Object.values(genderData).map(({ total, count, totalDwell }) => {
-          if (metricType === 'total') {
-            return totalDwell / 3600; // Convert seconds to hours
-          } else {
-            return (total / count) / 3600; // Convert seconds to hours
-          }
-        }),
+        data: [
+          // Male data (first)
+          genderData['male'] 
+          ? Number((metricType === 'total' 
+              ? genderData['male'].totalDwell / 3600 
+              : genderData['male'].total / genderData['male'].count / 3600).toFixed(3))
+          : 0,
+          // Female data (second)
+          genderData['female']
+          ? Number((metricType === 'total' 
+              ? genderData['female'].totalDwell / 3600 
+              : genderData['female'].total / genderData['female'].count / 3600).toFixed(3))
+          : 0
+        ],
         backgroundColor: [
-          chartTheme.colors.male,
-          chartTheme.colors.female,
-          chartTheme.colors.other
+          GENDER_COLORS.male,
+          GENDER_COLORS.female
         ],
-        borderColor: [
-          chartTheme.colors.male,
-          chartTheme.colors.female,
-          chartTheme.colors.other
-        ],
+        // borderColor: [
+        //   GENDER_COLORS.male,
+        //   GENDER_COLORS.female
+        // ],
         borderWidth: 1,
       },
     ],
   };
 
   const options = {
-    indexAxis: 'y' as const, // Horizontal bar chart
+    // indexAxis: 'y' as const, // Horizontal bar chart
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -97,8 +110,9 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
       tooltip: {
         callbacks: {
           label: function(context: any) {
+            const value = context.parsed.y || context.parsed.x;
             const metricLabel = metricType === 'total' ? 'Total' : 'Average';
-            return `${metricLabel}: ${context.parsed.x.toFixed(2)} hours`;
+            return `${metricLabel}: ${value.toFixed(3)} hours`;
           }
         }
       }
@@ -108,7 +122,7 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
         beginAtZero: true,
         title: {
           display: true,
-          text: 'Hours',
+          text: 'Gender',
           font: chartTheme.fonts.axis,
         },
         ticks: {
@@ -118,7 +132,7 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
       y: {
         title: {
           display: true,
-          text: 'Gender',
+          text: 'Hours',
           font: chartTheme.fonts.axis,
         },
         ticks: {

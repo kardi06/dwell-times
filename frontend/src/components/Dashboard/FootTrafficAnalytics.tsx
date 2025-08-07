@@ -29,15 +29,7 @@ export const FootTrafficAnalytics: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Foot Traffic Analytics
-        </h2>
-        <p className="text-gray-600 mb-6">
-          Analyze visitor patterns and traffic flow across different time periods and demographics.
-        </p>
-        
+    <>       
         <FootTrafficFilters
           config={config}
           onConfigChange={handleConfigChange}
@@ -50,7 +42,6 @@ export const FootTrafficAnalytics: React.FC = () => {
           config={config}
           isLoading={isLoading}
         />
-      </div>
-    </div>
+    </>
   );
 }; 
