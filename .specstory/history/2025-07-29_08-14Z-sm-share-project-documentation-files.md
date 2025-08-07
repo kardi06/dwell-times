@@ -5920,13 +5920,424 @@ The story now focuses on the core analytics dashboard functionality without the 
 
 _**User**_
 
-@DwellTimeBarChart.tsx for this we want the chart to be vertical, and just ouput gender male and female. don't make any change in the file, i want to do it manually
+make a story , we want to make waiting chart (frontend and backend for the data) . like in the image . we want to search who is waiting more 10 minute, we use dwell time by uniqe id and group by hour /day , and group by camera_description and camera group. check the databse. check the database @7-database-schema-storage-design-high-level.md . don't make any change if you don't understant minimal 95%. ask me if you don't understand. if you understant just go make a story
 
 ---
 
 _**Assistant**_
 
+Let me analyze the requirements and the database schema first to ensure I understand completely.
 
+From the image and your description, I understand:
+1. We need a waiting time chart showing total persons waiting by hour
+2. The chart shows number of people (y-axis) over time periods (x-axis)
+3. We need to identify people waiting more than 10 minutes using dwell_time
+4. We need to group by:
+   - Hour/day
+   - camera_description
+   - camera group
+
+From the database schema, I see we have:
+- `dwell_time` (integer) for tracking waiting duration
+- `camera_description` (VARCHAR(100)) for camera identification
+- `person_id` (VARCHAR(100)) for unique person tracking
+- `utc_time_started_readable` and `utc_time_ended_readable` (timestamp) for time tracking
+
+Questions for clarification:
+1. For "camera group" - I don't see a direct camera group field in the schema. Should we use `camera_grc` or `camera_grc_zone_name` for this?
+2. For the chart visualization:
+   - Should we show different lines for different cameras/groups?
+   - Do you want tooltips to show detailed information when hovering over data points?
+3. For the 10-minute threshold:
+   - Should we only show data for people waiting more than 10 minutes, or highlight them differently?
+   - Should we add a filter to toggle between all waiting times vs >10 minutes?
+
+Could you please clarify these points before I proceed with creating the story?
+
+---
+
+_**User**_
+
+1. add camera group database. because we need that later, like in the data in here 
+2. later user will chose witch camera would they want to see, default is all camera. 
+yes, we will show tooltip
+3. only show data for people waiting more than 10 minutes
+are there any question ?
+
+---
+
+_**Assistant**_
+
+I see the data now and understand better. Let me clarify my understanding before creating the story:
+
+1. For camera group:
+   - I see in the image that camera groups appear to be like "SoftNet hot #650000"
+   - We need to add this as a new column to the `camera_events` table
+   - This will help group related cameras together
+
+2. For the chart functionality:
+   - Default view: All cameras aggregated
+   - User can filter by specific cameras through a dropdown
+   - Tooltips will show detailed information on hover
+   - Only displaying data for people with dwell_time > 10 minutes
+   - Y-axis: Number of people waiting
+   - X-axis: Time periods (hourly/daily)
+
+Let me first propose the database change, then create the story if you confirm this is correct.
+
+Proposed database change to add to `camera_events`:
+```sql
+ALTER TABLE camera_events
+ADD COLUMN camera_group VARCHAR(100);
+```
+
+Is my understanding correct? If yes, I'll proceed with creating the detailed story. If not, please correct any misunderstandings.
+
+Also, one quick clarification: For the hourly/daily grouping, should users be able to switch between these views (like in the foot traffic story), or do you have a specific preference?
+
+---
+
+_**User**_
+
+maybe user can switch between hour and daily.
+yes you understant correct
+
+---
+
+_**Assistant**_
+
+Perfect! I'll create a comprehensive story for the waiting time analytics feature. Let me first propose the database change and then create the story.
+
+---
+
+<details><summary>Edit file: docs/architecture/7-database-schema-storage-design-high-level.md</summary>
+
+I will add the new camera_group column to the camera_events table schema.
+
+**Chunk 1**
+Lines added: 1, lines removed: undefined
+
+```diff
+@@ -52,4 +52,5 @@
+    - **NEW:** `age_group_outcome` (VARCHAR(50), nullable)
+    - **NEW:** `gender_outcome` (VARCHAR(20), nullable)
++   - **NEW:** `camera_group` (VARCHAR(100), nullable)
+  
+  - **crowd\_events**
+```
+
+</details>
+
+---
+
+Now, I'll create the story for the waiting time analytics feature.
+
+---
+
+<details><summary>Edit file: docs/stories/1.11.waiting-time-analytics.md</summary>
+
+I will create a new story for the waiting time analytics feature.
+
+**Chunk 1**
+Lines added: 263, lines removed: 1
+
+```diff
+@@ -1,1 +1,263 @@
+- 
++ # Story 1.11: Waiting Time Analytics
++ 
++ ## Status
++ Ready for Review
++ 
++ ## Story
++ **As a** user of the Dwell-Insight analytics platform,
++ **I want to** visualize and analyze waiting time patterns for people waiting more than 10 minutes,
++ **so that** I can identify peak waiting periods and optimize resource allocation.
++ 
++ ## Acceptance Criteria
++ 
++ 1. **Database Enhancement:**
++    - [ ] Add `camera_group` column to `camera_events` table
++    - [ ] Migrate existing data to populate camera groups
++    - [ ] Create appropriate indexes for performance
++ 
++ 2. **Backend API Development:**
++    - [ ] Create endpoint for waiting time analytics data
++    - [ ] Filter data for dwell_time > 10 minutes
++    - [ ] Group data by hour/day and camera information
++    - [ ] Implement camera and time period filtering
++    - [ ] Optimize query performance for large datasets
++ 
++ 3. **Chart Component Development:**
++    - [ ] Create WaitingTimeChart component using Chart.js
++    - [ ] Display number of people (y-axis) vs time periods (x-axis)
++    - [ ] Implement interactive tooltips with detailed information
++    - [ ] Support switching between hourly and daily views
++    - [ ] Handle loading and error states gracefully
++ 
++ 4. **Filtering & Controls:**
++    - [ ] Add camera selection dropdown (default: all cameras)
++    - [ ] Create time period selector (hour/day toggle)
++    - [ ] Implement date range selection
++    - [ ] Add export functionality for chart data
++ 
++ 5. **Integration & Performance:**
++    - [ ] Integrate with existing dashboard layout
++    - [ ] Implement real-time data updates
++    - [ ] Optimize data fetching and rendering
++    - [ ] Handle large datasets efficiently
++ 
++ ## Tasks / Subtasks
++ 
++ - [ ] **Task 1: Database Enhancement (AC: 1)**
++   - [ ] Create database migration script:
++     ```sql
++     ALTER TABLE camera_events
++     ADD COLUMN camera_group VARCHAR(100);
++     
++     CREATE INDEX idx_camera_events_waiting_time 
++     ON camera_events(dwell_time, camera_group, camera_description);
++     ```
++   - [ ] Implement data migration logic
++   - [ ] Add database model updates
++   - [ ] Test migration with sample data
++ 
++ - [ ] **Task 2: Backend API Development (AC: 2)**
++   - [ ] Create new endpoint `/api/v1/analytics/waiting-time`
++   - [ ] Implement data aggregation logic:
++     ```python
++     # Pseudo-code for aggregation
++     SELECT 
++       date_trunc('hour', utc_time_started_readable) as time_period,
++       camera_group,
++       camera_description,
++       COUNT(DISTINCT person_id) as waiting_count
++     FROM camera_events
++     WHERE dwell_time > 600  # More than 10 minutes in seconds
++     GROUP BY time_period, camera_group, camera_description
++     ```
++   - [ ] Add filtering parameters (time period, camera selection)
++   - [ ] Implement caching for performance
++   - [ ] Add API documentation
++ 
++ - [ ] **Task 3: Chart Component Development (AC: 3)**
++   - [ ] Create new `WaitingTimeChart` component
++   - [ ] Implement Chart.js line chart configuration
++   - [ ] Add custom tooltip component
++   - [ ] Create time period switching logic
++   - [ ] Add loading and error states
++ 
++ - [ ] **Task 4: Filtering Controls (AC: 4)**
++   - [ ] Create camera selector component
++   - [ ] Implement time period toggle (hour/day)
++   - [ ] Add date range picker integration
++   - [ ] Create data export functionality
++ 
++ - [ ] **Task 5: Dashboard Integration (AC: 5)**
++   - [ ] Add chart to dashboard layout
++   - [ ] Implement real-time updates
++   - [ ] Add performance optimizations
++   - [ ] Create comprehensive tests
++ 
++ ## Dev Notes
++ 
++ ### API Specification
++ 
++ **Endpoint:** `/api/v1/analytics/waiting-time`
++ 
++ **Query Parameters:**
++ - `view_type`: 'hourly' | 'daily'
++ - `start_date`: ISO date string
++ - `end_date`: ISO date string
++ - `camera_ids`: string[] (optional)
++ - `camera_groups`: string[] (optional)
++ 
++ **Response Format:**
++ ```typescript
++ interface WaitingTimeData {
++   time_period: string;
++   waiting_count: number;
++   camera_info: {
++     camera_description: string;
++     camera_group: string;
++   };
++ }
++ 
++ interface WaitingTimeResponse {
++   data: WaitingTimeData[];
++   metadata: {
++     total_records: number;
++     filtered_records: number;
++     time_range: {
++       start: string;
++       end: string;
++     };
++   };
++ }
++ ```
++ 
++ ### Component Interface
++ 
++ ```typescript
++ interface WaitingTimeChartProps {
++   data: WaitingTimeData[];
++   viewType: 'hourly' | 'daily';
++   onViewTypeChange: (type: 'hourly' | 'daily') => void;
++   selectedCameras: string[];
++   onCameraChange: (cameras: string[]) => void;
++   isLoading: boolean;
++   error?: Error;
++ }
++ 
++ interface WaitingTimeFilterProps {
++   cameras: Array<{
++     id: string;
++     description: string;
++     group: string;
++   }>;
++   selectedCameras: string[];
++   onCameraChange: (cameras: string[]) => void;
++   viewType: 'hourly' | 'daily';
++   onViewTypeChange: (type: 'hourly' | 'daily') => void;
++   dateRange: [Date, Date];
++   onDateRangeChange: (range: [Date, Date]) => void;
++ }
++ ```
++ 
++ ### Chart Configuration
++ 
++ ```typescript
++ const chartConfig = {
++   type: 'line',
++   data: {
++     datasets: [{
++       label: 'Waiting People',
++       borderColor: '#36A2EB',
++       fill: false,
++       tension: 0.4
++     }]
++   },
++   options: {
++     responsive: true,
++     interaction: {
++       intersect: false,
++       mode: 'index'
++     },
++     scales: {
++       y: {
++         beginAtZero: true,
++         title: {
++           display: true,
++           text: 'Number of People Waiting'
++         }
++       },
++       x: {
++         type: 'time',
++         time: {
++           unit: viewType === 'hourly' ? 'hour' : 'day'
++         },
++         title: {
++           display: true,
++           text: 'Time Period'
++         }
++       }
++     },
++     plugins: {
++       tooltip: {
++         enabled: true,
++         callbacks: {
++           label: (context) => {
++             return `Waiting: ${context.parsed.y} people`;
++           }
++         }
++       }
++     }
++   }
++ };
++ ```
++ 
++ ### Performance Considerations
++ 
++ 1. **Database:**
++    - Indexed queries for efficient filtering
++    - Materialized views for common aggregations
++    - Partitioning for historical data
++ 
++ 2. **API:**
++    - Response caching with Redis
++    - Pagination for large datasets
++    - Aggregated data pre-calculation
++ 
++ 3. **Frontend:**
++    - Debounced filter updates
++    - Virtualized camera selection list
++    - Memoized chart rendering
++    - Progressive loading for historical data
++ 
++ ### Testing Strategy
++ 
++ 1. **Unit Tests:**
++    - Chart component rendering
++    - Filter interactions
++    - Data transformations
++ 
++ 2. **Integration Tests:**
++    - API endpoint functionality
++    - Data flow through components
++    - Filter combinations
++ 
++ 3. **Performance Tests:**
++    - Large dataset handling
++    - Real-time update performance
++    - Cache effectiveness
++ 
++ ## Dependencies
++ - Chart.js and react-chartjs-2
++ - Date handling libraries (date-fns)
++ - Redis for caching
++ - Database migration tools
++ 
++ ## Testing
++ - Unit tests for components and data processing
++ - Integration tests for API endpoints
++ - Performance testing with large datasets
++ - Browser compatibility testing
++ 
++ ## Change Log
++ | Date | Version | Description | Author |
++ |------|---------|-------------|--------|
++ | 2024-01-30 | 1.0 | Initial story creation | SM | 
+```
+
+</details>
+
+---
+
+I've created a comprehensive story for the waiting time analytics feature. The story includes:
+
+1. **Database Changes:**
+   - Added `camera_group` column to `camera_events`
+   - Created appropriate indexes for performance
+
+2. **Backend Development:**
+   - New endpoint for waiting time analytics
+   - SQL query to filter people waiting >10 minutes
+   - Grouping by hour/day and camera information
+
+3. **Frontend Development:**
+   - New WaitingTimeChart component using Chart.js
+   - Camera selection with grouping
+   - Hour/day view switching
+   - Interactive tooltips
+
+4. **Key Features:**
+   - Only shows people waiting >10 minutes (dwell_time > 600 seconds)
+   - Default view shows all cameras
+   - Users can filter by specific cameras/groups
+   - Switchable between hourly and daily views
+   - Interactive tooltips with detailed information
+
+The story includes detailed technical specifications, component interfaces, and performance considerations. Does this align with your requirements? Would you like me to adjust anything in the story?
 
 ---
 

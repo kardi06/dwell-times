@@ -51,6 +51,7 @@
   - `zone_name` (VARCHAR(100), nullable)
   - **NEW:** `age_group_outcome` (VARCHAR(50), nullable)
   - **NEW:** `gender_outcome` (VARCHAR(20), nullable)
+  - **NEW:** `camera_group` (VARCHAR(100), nullable)
 
 - **crowd\_events**
 

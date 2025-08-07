@@ -73,6 +73,7 @@ class CameraEvent(Base):
     
     # Camera description for analytics
     camera_description = Column(String(100), nullable=True, index=True)
+    camera_group = Column(String(100), nullable=True, index=True)
     zone_name = Column(String(100), nullable=True, index=True)
     
     # Processed timestamp for analytics
