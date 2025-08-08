@@ -39,7 +39,9 @@ async def get_waiting_time_analytics(
         # Parse date parameters
         start_dt = None
         end_dt = None
-        
+        print("API waiting-time params:", start_date, end_date, camera_ids, camera_groups)
+        # if not start_date or not end_date:
+        #     raise HTTPException(status_code=400, detail="start_date and end_date are required")
         if start_date:
             try:
                 start_dt = datetime.fromisoformat(start_date)
@@ -147,7 +149,6 @@ async def get_waiting_time_analytics(
         #         }
         #     })
         for row in results:
-            # row[0] = time_period, row[-1] = waiting_count
             raw_tp = row.time_period
             if view_type == "hourly":
                 time_period_str = raw_tp.strftime('%Y-%m-%d %H:00:00')
@@ -156,12 +157,18 @@ async def get_waiting_time_analytics(
 
             item = {
                 "time_period": time_period_str,
-                "waiting_count": row.waiting_count
+                "waiting_count": row.waiting_count,
             }
             if camera_group_list:
                 item["camera_info"] = {
-                    "camera_group":      row.camera_group,
+                    "camera_group": row.camera_group,
                     "camera_description": row.camera_description,
+                }
+            else:
+                # Tambahkan agar frontend bisa group-by "All"
+                item["camera_info"] = {
+                    "camera_group": "All",
+                    "camera_description": "",
                 }
             data.append(item)
         

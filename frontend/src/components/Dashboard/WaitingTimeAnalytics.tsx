@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { WaitingTimeChart } from "./Charts/WaitingTimeChart";
-import { WaitingTimeFilters } from "./Charts/WaitingTimeFilters";
+import { WaitingTimeFilters, WTTimePeriod } from "./Charts/WaitingTimeFilters";
 import { useWaitingTimeData } from "../../hooks/useWaitingTimeData";
 import { analyticsAPI } from "../../services/api";
 
@@ -12,12 +12,16 @@ interface Camera {
 
 const WaitingTimeAnalyticsComponent: React.FC = () => {
   // State for filters
+  // const [viewType, setViewType] = useState<"hourly" | "daily">("hourly");
+  const [timePeriod, setTimePeriod] = useState<WTTimePeriod>("day");
   const [viewType, setViewType] = useState<"hourly" | "daily">("hourly");
+  const [selectedGroup, setSelectedGroup] = useState("");
   const [selectedCameras, setSelectedCameras] = useState<string[]>([]);
-  const [dateRange, setDateRange] = useState<[Date, Date]>([
-    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-    new Date(), // Today
-  ]);
+  // const [dateRange, setDateRange] = useState<[Date, Date]>([
+  //   new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+  //   new Date(), // Today
+  // ]);
+  const [date, setDate] = useState<Date>(new Date());
   const [cameras, setCameras] = useState<Camera[]>([]);
 
   // Fetch cameras on component mount
@@ -38,15 +42,27 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
 
   // Prepare parameters for the hook
   const hookParams = {
+    // viewType,
+    // startDate: dateRange[0].toISOString().split("T")[0],
+    // endDate: dateRange[1].toISOString().split("T")[0],
+    // cameraIds:
+    //   selectedCameras.length > 0 ? selectedCameras.join(",") : undefined,
+    timePeriod,
     viewType,
-    startDate: dateRange[0].toISOString().split("T")[0],
-    endDate: dateRange[1].toISOString().split("T")[0],
-    cameraIds:
-      selectedCameras.length > 0 ? selectedCameras.join(",") : undefined,
+    // startDate: date.toISOString().split("T")[0],
+    start_date: date ? date.toISOString().split("T")[0] : undefined, // <--
+    end_date: date ? date.toISOString().split("T")[0] : undefined,   // <--
+    cameraIds: selectedCameras.length ? selectedCameras.join(",") : undefined,
+    cameraGroups: selectedGroup ? selectedGroup : undefined,
   };
 
   // Fetch waiting time data
-  const { data = [], isLoading, error, refetch } = useWaitingTimeData(hookParams);
+  const {
+    data = [],
+    isLoading,
+    error,
+    refetch,
+  } = useWaitingTimeData(hookParams);
 
   // Handle filter changes with useCallback for performance
   const handleViewTypeChange = useCallback((type: "hourly" | "daily") => {
@@ -57,9 +73,9 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
     setSelectedCameras(cameras);
   }, []);
 
-  const handleDateRangeChange = useCallback((range: [Date, Date]) => {
-    setDateRange(range);
-  }, []);
+  // const handleDateRangeChange = useCallback((range: [Date, Date]) => {
+  //   setDateRange(range);
+  // }, []);
 
   // Export functionality with useCallback for performance
   const handleExport = useCallback(() => {
@@ -80,12 +96,14 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `waiting-time-analytics-${viewType}-${dateRange[0].toISOString().split("T")[0]}-${dateRange[1].toISOString().split("T")[0]}.csv`;
+    // a.download = `waiting-time-analytics-${viewType}-${dateRange[0].toISOString().split("T")[0]}-${dateRange[1].toISOString().split("T")[0]}.csv`;
+    a.download = `waiting-time-analytics-${viewType}-${date.toISOString().split("T")[0]}.csv`;
+    a.click();
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-  }, [data, viewType, dateRange]);
+  }, [data, viewType, date]);
 
   // Export JSON functionality with useCallback for performance
   const handleExportJSON = useCallback(() => {
@@ -98,10 +116,8 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
       metadata: {
         exportDate: new Date().toISOString(),
         viewType,
-        dateRange: {
-          start: dateRange[0].toISOString(),
-          end: dateRange[1].toISOString(),
-        },
+        // 
+        date,
         selectedCameras,
         totalRecords: data.reduce((sum, item) => sum + item.waiting_count, 0),
       },
@@ -113,16 +129,17 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `waiting-time-analytics-${viewType}-${dateRange[0].toISOString().split("T")[0]}-${dateRange[1].toISOString().split("T")[0]}.json`;
+    // a.download = `waiting-time-analytics-${viewType}-${dateRange[0].toISOString().split("T")[0]}-${dateRange[1].toISOString().split("T")[0]}.json`;
+    a.download = `waiting-time-analytics-${viewType}-${date.toISOString().split("T")[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-  }, [data, viewType, dateRange, selectedCameras]);
+  }, [data, viewType, date, selectedCameras]);
 
   const totalWaiting = useMemo(
     () => data.reduce((sum, item) => sum + item.waiting_count, 0),
-    [data]
+    [data],
   );
   // const groupCount = useMemo(
   //   () => new Set(data.map(item => item.camera_info.camera_group)).size,
@@ -131,28 +148,20 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
   const groupCount = useMemo(() => {
     // collect only those items that do have camera_info
     const groups = data
-      .filter(item => item.camera_info != null)
-      .map(item => item.camera_info.camera_group);
+      .filter((item) => item.camera_info != null)
+      .map((item) => item.camera_info.camera_group);
     return new Set(groups).size;
   }, [data]);
   const timePeriodCount = useMemo(
-    () => new Set(data.map(item => item.time_period)).size,
-    [data]
+    () => new Set(data.map((item) => item.time_period)).size,
+    [data],
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Waiting Time Analytics
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Analyze patterns of people waiting more than 10 minutes
-          </p>
-        </div>
-        <div className="flex gap-2">
+      {/* <div className="flex justify-between items-center"> */}
+        {/* <div className="flex gap-2">
           <button
             onClick={handleExport}
             disabled={isLoading || !data || data.length === 0}
@@ -167,23 +176,36 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
           >
             Export JSON
           </button>
-        </div>
-      </div>
+        </div> */}
+      {/* </div> */}
 
       {/* Filters */}
       <WaitingTimeFilters
+        // viewType={viewType}
+        // onViewTypeChange={handleViewTypeChange}
+        // selectedCameras={selectedCameras}
+        // onCameraChange={handleCameraChange}
+        // dateRange={dateRange}
+        // onDateRangeChange={handleDateRangeChange}
+        // cameras={cameras}
+        // isLoading={isLoading}
+        timePeriod={timePeriod}
+        onTimePeriodChange={setTimePeriod}
         viewType={viewType}
         onViewTypeChange={handleViewTypeChange}
+        selectedGroup={selectedGroup}
+        onGroupChange={setSelectedGroup}
         selectedCameras={selectedCameras}
         onCameraChange={handleCameraChange}
-        dateRange={dateRange}
-        onDateRangeChange={handleDateRangeChange}
+        date={date}
+        onDateChange={(d) => setDate(d || new Date())}
+        cameraGroups={[...new Set(cameras.map((c) => c.group))]}
         cameras={cameras}
         isLoading={isLoading}
       />
 
       {/* Chart */}
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">
             Waiting Time Trends
@@ -208,15 +230,13 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
       </div>
 
       {/* Summary Stats */}
-      {data.length > 0 && (
+      {/* {data.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
             <h4 className="text-sm font-medium text-gray-500">
               Total People Waiting
             </h4>
-            <p className="text-2xl font-bold text-gray-900">
-              {totalWaiting}
-            </p>
+            <p className="text-2xl font-bold text-gray-900">{totalWaiting}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
             <h4 className="text-sm font-medium text-gray-500">Time Periods</h4>
@@ -226,14 +246,12 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
           </div>
           <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
             <h4 className="text-sm font-medium text-gray-500">Camera Groups</h4>
-            <p className="text-2xl font-bold text-gray-900">
-              {groupCount}
-            </p>
+            <p className="text-2xl font-bold text-gray-900">{groupCount}</p>
           </div>
         </div>
-      )}
+      )} */}
     </div>
-      );
-  };
+  );
+};
 
 export const WaitingTimeAnalytics = React.memo(WaitingTimeAnalyticsComponent);

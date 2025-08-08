@@ -10,7 +10,7 @@ import MetricCard from './MetricCard';
 import { CircleUserRound, FileVideoCamera, History, Clock } from 'lucide-react';
 // import ChartFiltersSection from './ChartFiltersSection';
 import { FootTrafficChartConfig } from './Charts/FootTrafficChart';
-import { FootTrafficFilters } from './Charts/FootTrafficFilters';
+// import { FootTrafficFilters } from './Charts/FootTrafficFilters';
 
 interface DashboardProps {
   token: string;
@@ -120,14 +120,14 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   };
 
   // Real-time updates - refresh data every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchMetrics();
-      fetchChartData();
-    }, 30000); // 30 seconds
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     fetchMetrics();
+  //     fetchChartData();
+  //   }, 30000); // 30 seconds
 
-    return () => clearInterval(interval);
-  }, []);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   const fetchChartData = async () => {
     setChartLoading(true);

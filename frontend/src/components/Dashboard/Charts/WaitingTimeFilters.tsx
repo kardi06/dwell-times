@@ -1,240 +1,191 @@
-import React from "react";
+// components/Charts/WaitingTimeFilters.tsx
+import React, { useEffect } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
-interface WaitingTimeFiltersProps {
+export type WTTimePeriod = "day" | "week" | "month" | "quarter" | "year";
+
+interface Props {
+  timePeriod: WTTimePeriod;
+  onTimePeriodChange: (p: WTTimePeriod) => void;
   viewType: "hourly" | "daily";
-  onViewTypeChange: (type: "hourly" | "daily") => void;
-  selectedCameras: string[];
-  onCameraChange: (cameras: string[]) => void;
-  dateRange: [Date, Date];
-  onDateRangeChange: (range: [Date, Date]) => void;
-  cameras: Array<{
-    id: string;
-    description: string;
-    group: string;
-  }>;
+  onViewTypeChange: (v: "hourly" | "daily") => void;
+  selectedGroup: string;
+  onGroupChange: (g: string) => void;
+  selectedCameras: string[]; // [] = all
+  onCameraChange: (ids: string[]) => void;
+  date: Date | null;
+  onDateChange: (d: Date | null) => void;
+  cameraGroups: string[];
+  cameras: { id: string; description: string; group: string }[];
   isLoading?: boolean;
 }
 
-export const WaitingTimeFilters: React.FC<WaitingTimeFiltersProps> = ({
+const timePeriodOptions = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "quarter", label: "Quarter" },
+  { value: "year", label: "Year" },
+];
+
+const viewTypeOptions = [
+  { value: "hourly", label: "Hourly View" },
+  { value: "daily", label: "Daily View" },
+];
+
+export const WaitingTimeFilters: React.FC<Props> = ({
+  timePeriod,
+  onTimePeriodChange,
   viewType,
   onViewTypeChange,
+  selectedGroup,
+  onGroupChange,
   selectedCameras,
   onCameraChange,
-  dateRange,
-  onDateRangeChange,
+  date,
+  onDateChange,
+  cameraGroups,
   cameras,
   isLoading = false,
 }) => {
-  const handleViewTypeChange = (
-    event: React.ChangeEvent<HTMLSelectElement>,
-  ) => {
-    const newViewType = event.target.value as "hourly" | "daily";
-    onViewTypeChange(newViewType);
-  };
+  // ensure a default date when timePeriod berganti
+  useEffect(() => {
+    if (!date) {
+      const now = new Date();
+      switch (timePeriod) {
+        case "day":     onDateChange(now); break;
+        case "week":    onDateChange(now); break;
+        case "month":   onDateChange(new Date(now.getFullYear(), now.getMonth(), 1)); break;
+        case "quarter": onDateChange(new Date(now.getFullYear(), Math.floor(now.getMonth()/3)*3, 1)); break;
+        case "year":    onDateChange(new Date(now.getFullYear(), 0, 1)); break;
+      }
+    }
+    // eslint-disable-next-line
+  }, [timePeriod, date]);
 
-  const handleCameraChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedOptions = Array.from(
-      event.target.selectedOptions,
-      (option) => option.value,
-    );
-    onCameraChange(selectedOptions);
-  };
+  // Ambil camera yang harus tampil
+  const visibleCameras =
+    selectedGroup
+      ? cameras.filter((c) => c.group === selectedGroup)
+      : cameras;
 
-  const handleStartDateChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const newStartDate = new Date(event.target.value);
-    onDateRangeChange([newStartDate, dateRange[1]]);
-  };
-
-  const handleEndDateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newEndDate = new Date(event.target.value);
-    onDateRangeChange([dateRange[0], newEndDate]);
-  };
-
-  const formatDateForInput = (date: Date): string => {
-    return date.toISOString().split("T")[0];
-  };
-
-  const handleQuickDateRange = (days: number) => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    onDateRangeChange([startDate, endDate]);
-  };
-
+  // Camera select: jika ingin multiselect, pakai <select multiple>
+  // Jika hanya single, jadikan single select
   return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Waiting Time Filters
-      </h3>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* View Type Selector */}
-        <div>
-          <label
-            htmlFor="viewType"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            View Type
+    <div className="space-y-4 mb-6 p-4 bg-white rounded-lg shadow-sm border">
+      <div className="flex flex-wrap gap-4 items-end">
+        {/* Time Period */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-700 mb-1">
+            Time Period
           </label>
           <select
-            id="viewType"
-            value={viewType}
-            onChange={handleViewTypeChange}
+            value={timePeriod}
+            onChange={(e) => onTimePeriodChange(e.target.value as WTTimePeriod)}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
           >
-            <option value="hourly">Hourly</option>
-            <option value="daily">Daily</option>
+            {timePeriodOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
           </select>
         </div>
 
-        {/* Start Date */}
-        <div>
-          <label
-            htmlFor="startDate"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Start Date
+        {/* Camera Group */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-700 mb-1">
+            Camera Group
           </label>
-          <input
-            type="date"
-            id="startDate"
-            value={formatDateForInput(dateRange[0])}
-            onChange={handleStartDateChange}
+          <select
+            value={selectedGroup}
+            onChange={(e) => onGroupChange(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-          />
-        </div>
-
-        {/* End Date */}
-        <div>
-          <label
-            htmlFor="endDate"
-            className="block text-sm font-medium text-gray-700 mb-2"
           >
-            End Date
-          </label>
-          <input
-            type="date"
-            id="endDate"
-            value={formatDateForInput(dateRange[1])}
-            onChange={handleEndDateChange}
-            disabled={isLoading}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-          />
-        </div>
-
-        {/* Camera Selection */}
-        <div>
-          <label
-            htmlFor="cameras"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Cameras
-          </label>
-          <div className="space-y-2">
-            <select
-              id="cameras"
-              multiple
-              value={selectedCameras}
-              onChange={handleCameraChange}
-              disabled={isLoading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 min-h-[80px]"
-            >
-              <option key="all" value="">
-                All Cameras
+            <option value="">All Groups</option>
+            {cameraGroups.map((group) => (
+              <option key={group} value={group}>
+                {group}
               </option>
-              {cameras.map((camera) => (
-                <option key={camera.id} value={camera.id}>
-                  {camera.description} ({camera.group})
-                </option>
-              ))}
-            </select>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => onCameraChange([])}
-                disabled={isLoading}
-                className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50"
-              >
-                Clear All
-              </button>
-              <button
-                type="button"
-                onClick={() => onCameraChange(cameras.map((c) => c.id))}
-                disabled={isLoading}
-                className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
-              >
-                Select All
-              </button>
-            </div>
-            <p className="text-xs text-gray-500">
-              Hold Ctrl/Cmd to select multiple cameras
-            </p>
-          </div>
+            ))}
+          </select>
         </div>
-      </div>
 
-      {/* Quick Date Range Presets */}
-      <div className="mt-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Quick Date Ranges
-        </label>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => handleQuickDateRange(1)}
+        {/* Camera */}
+        <div className="flex flex-col min-w-[170px]">
+          <label className="text-sm font-medium text-gray-700 mb-1">
+            Camera
+          </label>
+          <select
+            value={selectedCameras[0] || ""}
+            onChange={(e) => onCameraChange(e.target.value ? [e.target.value] : [])}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             disabled={isLoading}
-            className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
           >
-            Last 24h
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickDateRange(7)}
-            disabled={isLoading}
-            className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
-          >
-            Last 7 days
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickDateRange(30)}
-            disabled={isLoading}
-            className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
-          >
-            Last 30 days
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickDateRange(90)}
-            disabled={isLoading}
-            className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
-          >
-            Last 90 days
-          </button>
+            <option value="">All Cameras</option>
+            {visibleCameras.map((cam) => (
+              <option key={cam.id} value={cam.id}>
+                {cam.description}
+              </option>
+            ))}
+          </select>
         </div>
-      </div>
 
-      {/* Filter Summary */}
-      <div className="mt-4 p-3 bg-gray-50 rounded-md">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">
-          Active Filters:
-        </h4>
-        <div className="text-sm text-gray-600 space-y-1">
-          <div>• View Type: {viewType === "hourly" ? "Hourly" : "Daily"}</div>
-          <div>
-            • Date Range: {formatDateForInput(dateRange[0])} to{" "}
-            {formatDateForInput(dateRange[1])}
-          </div>
-          <div>
-            • Selected Cameras:{" "}
-            {selectedCameras.length > 0
-              ? selectedCameras.join(", ")
-              : "All Cameras"}
-          </div>
+        {/* View Type */}
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-700 mb-1">
+            View Type
+          </label>
+          <select
+            value={viewType}
+            onChange={(e) => onViewTypeChange(e.target.value as "hourly" | "daily")}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={isLoading || timePeriod === "day"}
+          >
+            {viewTypeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Date/Period Picker */}
+        <div className="flex flex-col min-w-[130px]">
+          <label className="text-sm font-medium text-gray-700 mb-1">
+            {timePeriod === "day"
+              ? "Date"
+              : timePeriod === "week"
+              ? "Week"
+              : timePeriod === "month"
+              ? "Month"
+              : timePeriod === "quarter"
+              ? "Quarter"
+              : "Year"}
+          </label>
+          <DatePicker
+            selected={date}
+            onChange={(d) => onDateChange(d)}
+            dateFormat={
+              timePeriod === "day"
+                ? "yyyy-MM-dd"
+                : timePeriod === "week"
+                ? "yyyy-MM-dd"
+                : timePeriod === "month"
+                ? "yyyy-MM"
+                : timePeriod === "quarter"
+                ? "yyyy-MM"
+                : "yyyy"
+            }
+            showWeekPicker={timePeriod === "week"}
+            showMonthYearPicker={timePeriod === "month" || timePeriod === "quarter"}
+            showYearPicker={timePeriod === "year"}
+            disabled={isLoading}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
         </div>
       </div>
     </div>
