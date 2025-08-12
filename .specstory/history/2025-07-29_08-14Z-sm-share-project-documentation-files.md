@@ -6341,3 +6341,126 @@ The story includes detailed technical specifications, component interfaces, and 
 
 ---
 
+_**User**_
+
+first give me sql code to add column department and division in pgadmin.
+this is example of the data 
+camera_group_data_group_departemen = department
+camera_group_data_group_divisi = divisi.
+and then make change in @7-database-schema-storage-design-high-level.md and in model here @camera_events.py 
+
+---
+
+_**Assistant**_
+
+<think><details><summary>Thought Process</summary>**Adding database columns**
+
+I need to provide SQL code to add the columns `department` and `division` in Postgres through pgAdmin. The mapping shows that `camera_group_data_group_departemen` corresponds to `department` and `camera_group_data_group_divisi` to `division`. I'll update the database by adding columns called `camera_group_department` and `camera_group_division`, both set to VARCHAR(100). These updates should also be reflected in the architecture document and the `camera_events.py` model. I'll use the prefixes to avoid potential conflicts in naming.
+**Updating database schema**
+
+The user requested the addition of `department` and `division` columns. However, since we already have `division`, I should check if we really need it. It might be a good idea to include optional indexes in the SQL code, even though they didn't specifically ask.
+
+I'll provide SQL code that uses `ALTER TABLE` to add these columns as VARCHAR(100) and add comments referencing the mapping. Additionally, I'll update the architecture documentation to reflect these new fields.
+
+For the backend model, I'll add `department` and `division` as String(100), with nullable set to True, and consider indexing them. Although it's not required, including indexes like `idx_department_division` might aid in filtering. I just need to be cautious about not over-modifying the schema.
+**Implementing database updates**
+
+I'll add the columns `department` and `division` with `index=True`, but I won't include indices in the `__table_args__`. It's important to ensure we remember the earlier addition of the `camera_group` column.
+
+I’m planning to use the `functions.edit_file` tool to update the architecture file. I’ll specify where to insert the new columns under the `camera_events` list, right after `camera_group`. I’ll add `department` and `division` as VARCHAR(100), both nullable.
+
+I'll also include the model file updates to define these columns similarly. I'll place these additions near `camera_group` for clarity. Once I have everything set, I’ll go ahead and apply the edits.</details></think>
+
+---
+
+<details><summary>Edit file: docs/architecture/7-database-schema-storage-design-high-level.md</summary>
+
+I will add the new department and division columns to the camera_events table schema directly under camera_group.
+
+**Chunk 1**
+Lines added: 2, lines removed: undefined
+
+```diff
+@@ -53,4 +53,6 @@
+    - **NEW:** `gender_outcome` (VARCHAR(20), nullable)
+    - **NEW:** `camera_group` (VARCHAR(100), nullable)
++   - **NEW:** `department` (VARCHAR(100), nullable)
++   - **NEW:** `division` (VARCHAR(100), nullable)
+  
+  - **crowd\_events**
+```
+
+</details>
+
+---
+
+<details><summary>Edit file: backend/app/models/camera_events.py</summary>
+
+I will add new columns department and division to the CameraEvent model and create indexes for them.
+
+**Chunk 1**
+Lines added: 2, lines removed: undefined
+
+```diff
+@@ -75,4 +75,6 @@
+      camera_description = Column(String(100), nullable=True, index=True)
+      camera_group = Column(String(100), nullable=True, index=True)
++     department = Column(String(100), nullable=True, index=True)
++     division = Column(String(100), nullable=True, index=True)
+      zone_name = Column(String(100), nullable=True, index=True)
+      
+```
+
+**Chunk 2**
+Lines added: 4, lines removed: undefined
+
+```diff
+@@ -102,4 +104,8 @@
+          Index('idx_gender_outcome', 'gender_outcome'),
+          Index('idx_demographic_grouping', 'person_id', 'age_group_outcome', 'gender_outcome', 'created_at'),
++         # New indexes for department/division filtering
++         Index('idx_department', 'department'),
++         Index('idx_division', 'division'),
++         Index('idx_group_dept_div', 'camera_group', 'department', 'division'),
+      )
+  
+```
+
+</details>
+
+---
+
+Here’s the SQL you can run in pgAdmin to add the two new columns to PostgreSQL and index them for analytics:
+
+SQL (run in pgAdmin)
+```sql
+-- 1) Add columns
+ALTER TABLE public.camera_events
+ADD COLUMN IF NOT EXISTS department VARCHAR(100),
+ADD COLUMN IF NOT EXISTS division   VARCHAR(100);
+
+-- 2) Optional: backfill from existing fields if applicable
+-- Example mapping if your incoming data columns are named like the CSV fields you showed:
+-- UPDATE public.camera_events
+-- SET department = camera_group_data_group_departemen,
+--     division   = camera_group_data_group_divisi
+-- WHERE department IS NULL OR division IS NULL;
+
+-- 3) Indexes to support filtering/grouping
+CREATE INDEX IF NOT EXISTS idx_camera_events_department ON public.camera_events(department);
+CREATE INDEX IF NOT EXISTS idx_camera_events_division   ON public.camera_events(division);
+CREATE INDEX IF NOT EXISTS idx_camera_events_group_dept_div
+  ON public.camera_events(camera_group, department, division);
+```
+
+Updates applied:
+- Architecture: Added `department` and `division` to `camera_events` in `docs/architecture/7-database-schema-storage-design-high-level.md`.
+- Model: Added `department` and `division` columns (and indexes) in `backend/app/models/camera_events.py`.
+
+Summary
+- New columns: `department` (VARCHAR(100)), `division` (VARCHAR(100)).
+- You can backfill from your source columns like `camera_group_data_group_departemen` and `camera_group_data_group_divisi` if they’re available during ingest.
+- Indexes added for efficient filtering and grouping by group/department/division.
+
+---
+

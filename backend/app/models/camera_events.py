@@ -74,6 +74,8 @@ class CameraEvent(Base):
     # Camera description for analytics
     camera_description = Column(String(100), nullable=True, index=True)
     camera_group = Column(String(100), nullable=True, index=True)
+    department = Column(String(100), nullable=True, index=True)
+    division = Column(String(100), nullable=True, index=True)
     zone_name = Column(String(100), nullable=True, index=True)
     
     # Processed timestamp for analytics
@@ -101,6 +103,9 @@ class CameraEvent(Base):
         Index('idx_age_group_outcome', 'age_group_outcome'),
         Index('idx_gender_outcome', 'gender_outcome'),
         Index('idx_demographic_grouping', 'person_id', 'age_group_outcome', 'gender_outcome', 'created_at'),
+        Index('idx_department', 'department'),
+        Index('idx_division', 'division'),
+        Index('idx_group_dept_div', 'camera_group', 'department', 'division'),
     )
 
 class PersonSession(Base):

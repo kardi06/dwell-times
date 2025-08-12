@@ -40,23 +40,66 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
     fetchCameras();
   }, []);
 
-  // Prepare parameters for the hook
+  const formatDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+  };
+
+  const computeRange = (base: Date, period: WTTimePeriod): { start: Date; end: Date } => {
+    const d = new Date(base);
+    let start = new Date(d);
+    let end = new Date(d);
+
+    switch (period) {
+      case "day":
+        // same day
+        break;
+      case "week": {
+        // Align to Sunday..Saturday
+        const startOfWeek = new Date(d);
+        startOfWeek.setDate(d.getDate() - d.getDay());
+        start = startOfWeek;
+        end = new Date(startOfWeek);
+        end.setDate(startOfWeek.getDate() + 6);
+        break;
+      }
+      case "month": {
+        start = new Date(d.getFullYear(), d.getMonth(), 1);
+        end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        break;
+      }
+      case "quarter": {
+        const q = Math.floor(d.getMonth() / 3);
+        const startMonth = q * 3;
+        start = new Date(d.getFullYear(), startMonth, 1);
+        end = new Date(d.getFullYear(), startMonth + 3, 0);
+        break;
+      }
+      case "year": {
+        start = new Date(d.getFullYear(), 0, 1);
+        end = new Date(d.getFullYear(), 11, 31);
+        break;
+      }
+    }
+    // normalize time to local day bounds
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  };
+
+  const { start: rangeStart, end: rangeEnd } = computeRange(date, timePeriod);
+
   const hookParams = {
-    // viewType,
-    // startDate: dateRange[0].toISOString().split("T")[0],
-    // endDate: dateRange[1].toISOString().split("T")[0],
-    // cameraIds:
-    //   selectedCameras.length > 0 ? selectedCameras.join(",") : undefined,
     timePeriod,
     viewType,
-    // startDate: date.toISOString().split("T")[0],
-    start_date: date ? date.toISOString().split("T")[0] : undefined, // <--
-    end_date: date ? date.toISOString().split("T")[0] : undefined,   // <--
+    start_date: formatDate(rangeStart),
+    end_date: formatDate(rangeEnd),
     cameraIds: selectedCameras.length ? selectedCameras.join(",") : undefined,
     cameraGroups: selectedGroup ? selectedGroup : undefined,
   };
 
-  // Fetch waiting time data
   const {
     data = [],
     isLoading,
@@ -64,7 +107,6 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
     refetch,
   } = useWaitingTimeData(hookParams);
 
-  // Handle filter changes with useCallback for performance
   const handleViewTypeChange = useCallback((type: "hourly" | "daily") => {
     setViewType(type);
   }, []);
@@ -73,11 +115,6 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
     setSelectedCameras(cameras);
   }, []);
 
-  // const handleDateRangeChange = useCallback((range: [Date, Date]) => {
-  //   setDateRange(range);
-  // }, []);
-
-  // Export functionality with useCallback for performance
   const handleExport = useCallback(() => {
     if (!data || data.length === 0) {
       alert("No data to export");
@@ -96,16 +133,14 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    // a.download = `waiting-time-analytics-${viewType}-${dateRange[0].toISOString().split("T")[0]}-${dateRange[1].toISOString().split("T")[0]}.csv`;
-    a.download = `waiting-time-analytics-${viewType}-${date.toISOString().split("T")[0]}.csv`;
+    a.download = `waiting-time-analytics-${viewType}-${formatDate(rangeStart)}-${formatDate(rangeEnd)}.csv`;
     a.click();
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-  }, [data, viewType, date]);
+  }, [data, viewType, rangeStart, rangeEnd]);
 
-  // Export JSON functionality with useCallback for performance
   const handleExportJSON = useCallback(() => {
     if (!data || data.length === 0) {
       alert("No data to export");
@@ -116,8 +151,8 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
       metadata: {
         exportDate: new Date().toISOString(),
         viewType,
-        // 
-        date,
+        start_date: formatDate(rangeStart),
+        end_date: formatDate(rangeEnd),
         selectedCameras,
         totalRecords: data.reduce((sum, item) => sum + item.waiting_count, 0),
       },
@@ -129,24 +164,19 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    // a.download = `waiting-time-analytics-${viewType}-${dateRange[0].toISOString().split("T")[0]}-${dateRange[1].toISOString().split("T")[0]}.json`;
-    a.download = `waiting-time-analytics-${viewType}-${date.toISOString().split("T")[0]}.json`;
+    a.download = `waiting-time-analytics-${viewType}-${formatDate(rangeStart)}-${formatDate(rangeEnd)}.json`;
+    a.click();
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-  }, [data, viewType, date, selectedCameras]);
+  }, [data, viewType, rangeStart, rangeEnd, selectedCameras]);
 
   const totalWaiting = useMemo(
     () => data.reduce((sum, item) => sum + item.waiting_count, 0),
     [data],
   );
-  // const groupCount = useMemo(
-  //   () => new Set(data.map(item => item.camera_info.camera_group)).size,
-  //   [data]
-  // );
   const groupCount = useMemo(() => {
-    // collect only those items that do have camera_info
     const groups = data
       .filter((item) => item.camera_info != null)
       .map((item) => item.camera_info.camera_group);
@@ -159,36 +189,7 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
 
   return (
     <div className="space-y-2">
-      {/* Header */}
-      {/* <div className="flex justify-between items-center"> */}
-        {/* <div className="flex gap-2">
-          <button
-            onClick={handleExport}
-            disabled={isLoading || !data || data.length === 0}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            Export CSV
-          </button>
-          <button
-            onClick={handleExportJSON}
-            disabled={isLoading || !data || data.length === 0}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            Export JSON
-          </button>
-        </div> */}
-      {/* </div> */}
-
-      {/* Filters */}
       <WaitingTimeFilters
-        // viewType={viewType}
-        // onViewTypeChange={handleViewTypeChange}
-        // selectedCameras={selectedCameras}
-        // onCameraChange={handleCameraChange}
-        // dateRange={dateRange}
-        // onDateRangeChange={handleDateRangeChange}
-        // cameras={cameras}
-        // isLoading={isLoading}
         timePeriod={timePeriod}
         onTimePeriodChange={setTimePeriod}
         viewType={viewType}
@@ -204,17 +205,13 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
         isLoading={isLoading}
       />
 
-      {/* Chart */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 w-full">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Waiting Time Trends
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900">Waiting Time Trends</h3>
           <div className="text-sm text-gray-500">
             {data.length > 0 && (
               <>
-                Total Records:{" "}
-                {data.reduce((sum, item) => sum + item.waiting_count, 0)} people
+                Total Records: {data.reduce((sum, item) => sum + item.waiting_count, 0)} people
               </>
             )}
           </div>
@@ -228,28 +225,6 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
           error={error}
         />
       </div>
-
-      {/* Summary Stats */}
-      {/* {data.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h4 className="text-sm font-medium text-gray-500">
-              Total People Waiting
-            </h4>
-            <p className="text-2xl font-bold text-gray-900">{totalWaiting}</p>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h4 className="text-sm font-medium text-gray-500">Time Periods</h4>
-            <p className="text-2xl font-bold text-gray-900">
-              {timePeriodCount}
-            </p>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <h4 className="text-sm font-medium text-gray-500">Camera Groups</h4>
-            <p className="text-2xl font-bold text-gray-900">{groupCount}</p>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 };

@@ -11,6 +11,8 @@ import { CircleUserRound, FileVideoCamera, History, Clock } from 'lucide-react';
 // import ChartFiltersSection from './ChartFiltersSection';
 import { FootTrafficChartConfig } from './Charts/FootTrafficChart';
 // import { FootTrafficFilters } from './Charts/FootTrafficFilters';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 interface DashboardProps {
   token: string;
@@ -48,6 +50,10 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
+  // KPI date range state
+  const [kpiStartDate, setKpiStartDate] = useState<Date | null>(null);
+  const [kpiEndDate, setKpiEndDate] = useState<Date | null>(null);
+  
   // Chart state
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
@@ -62,13 +68,25 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
     viewType: 'daily'
   });
 
+  const formatDateForApi = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   const fetchMetrics = async () => {
     setLoading(true);
     setError('');
     
     try {
+      // Build KPI params if dates selected
+      const kpiParams = new URLSearchParams();
+      if (kpiStartDate) kpiParams.append('start_date', formatDateForApi(kpiStartDate));
+      if (kpiEndDate) kpiParams.append('end_date', formatDateForApi(kpiEndDate));
+
       // Fetch basic KPI metrics
-      const kpiResponse = await fetch('http://localhost:8000/api/v1/analytics/kpi-metrics', {
+      const kpiResponse = await fetch(`http://localhost:8000/api/v1/analytics/kpi-metrics?${kpiParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -96,9 +114,19 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
         // Calculate waiting time metrics
         const totalWaitingPeople = waitingTimeData.data?.reduce((sum: number, item: any) => sum + item.waiting_count, 0) || 0;
         
+        // Map backend KPI keys to UI keys
+        const k = kpiData.kpi_metrics || {};
+        const mappedKpis: KPIMetrics = {
+          total_unique_visitors: k.total_unique_visitors ?? 0,
+          total_events_processed: k.total_events_processed ?? 0,
+          cameras_with_activity: k.active_cameras_count ?? 0,
+          average_dwell_time: k.average_dwell_time_seconds ?? 0,
+          max_dwell_time: k.maximum_dwell_time_seconds ?? 0,
+        };
+        
         // Combine the metrics
-        const combinedMetrics = {
-          ...kpiData.kpi_metrics,
+        const combinedMetrics: KPIMetrics = {
+          ...mappedKpis,
           waiting_time_metrics: {
             total_waiting_people: totalWaitingPeople,
             peak_waiting_period: 'N/A', // Could be calculated from data
@@ -150,17 +178,23 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
           startDate = new Date(selectedDate.getFullYear(), startMonth, 1);
         }
         
-        const startDateStr = startDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+        const startDateStr = formatDateForApi(startDate);
         params.append('start_date', startDateStr);
         
         // For different time periods, calculate end date
         switch (timePeriod) {
           case 'day':
             // Same day
-            // endDate.setDate(selectedDate.getDate() + 1);
             break;
           case 'week':
-            endDate.setDate(selectedDate.getDate() + 6);
+            // Align with UI week display (Sun-Sat)
+            const startOfWeek = new Date(selectedDate);
+            startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
+            startDate = startOfWeek;
+            endDate = new Date(startOfWeek);
+            endDate.setDate(startOfWeek.getDate() + 6);
+            // Update start_date param to the computed start of week
+            params.set('start_date', formatDateForApi(startDate));
             break;
           case 'month':
             endDate.setMonth(selectedDate.getMonth() + 1);
@@ -178,7 +212,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
             endDate.setDate(0);
             break;
         }
-        params.append('end_date', endDate.toISOString().split('T')[0]);
+        params.append('end_date', formatDateForApi(endDate));
       }
 
       const response = await fetch(
@@ -211,6 +245,32 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   useEffect(() => {
     fetchChartData();
   }, [timePeriod, metricType, selectedDate]);
+
+  const renderKpiDateFilters = () => (
+    <div className="flex items-end gap-3">
+      <div className="flex flex-col">
+        <label className="text-sm text-gray-700 mb-1">Start Date</label>
+        <DatePicker
+          selected={kpiStartDate}
+          onChange={setKpiStartDate}
+          dateFormat="MM/dd/yyyy"
+          placeholderText="Select start date"
+          className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <div className="flex flex-col">
+        <label className="text-sm text-gray-700 mb-1">End Date</label>
+        <DatePicker
+          selected={kpiEndDate}
+          onChange={setKpiEndDate}
+          dateFormat="MM/dd/yyyy"
+          placeholderText="Select end date"
+          className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <Button variant="outline" size="sm" onClick={fetchMetrics} className="mb-1">Apply</Button>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
@@ -250,6 +310,13 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
 
         {/* Metrics Cards Section */}
         <section className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              {/* <h2 className="text-2xl font-bold text-gray-900">Key Performance Indicators</h2> */}
+              <p className="text-gray-600 text-sm">Filter metrics by date range</p>
+            </div>
+            {renderKpiDateFilters()}
+          </div>
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (

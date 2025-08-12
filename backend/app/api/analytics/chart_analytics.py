@@ -101,9 +101,12 @@ async def get_chart_data(
         # Format the results
         chart_data = []
         for row in result:
+            gender_value = (row.gender or '').lower()
+            if gender_value not in ('male','female'):
+                continue
             chart_data.append({
                 "age_group": row.age_group or "Other",
-                "gender": row.gender or "other",
+                "gender": gender_value,
                 "total_dwell_time": int(row.total_dwell_time or 0),
                 "avg_dwell_time": float(row.avg_dwell_time or 0),
                 "event_count": int(row.event_count or 0)
@@ -203,6 +206,8 @@ async def get_foot_traffic_data(
                 extract('hour', CameraEvent.utc_time_started_readable).label('hour'),
                 func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
                 func.count(func.distinct(CameraEvent.person_id)).label('unique_count')
+            ).filter(
+                func.lower(func.coalesce(CameraEvent.gender_outcome, 'other')).in_(['male','female'])
             ).group_by(
                 extract('hour', CameraEvent.utc_time_started_readable),
                 func.coalesce(CameraEvent.gender_outcome, 'other')
@@ -214,6 +219,8 @@ async def get_foot_traffic_data(
                 func.extract('dow', CameraEvent.utc_time_started_readable).label('day_of_week'),
                 func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
                 func.count(func.distinct(CameraEvent.person_id)).label('unique_count')
+            ).filter(
+                func.lower(func.coalesce(CameraEvent.gender_outcome, 'other')).in_(['male','female'])
             ).group_by(
                 func.extract('dow', CameraEvent.utc_time_started_readable),
                 func.coalesce(CameraEvent.gender_outcome, 'other')
