@@ -28,6 +28,8 @@ async def get_waiting_time_analytics(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     camera_ids: Optional[str] = Query(None, description="Comma-separated camera IDs"),
     camera_groups: Optional[str] = Query(None, description="Comma-separated camera groups"),
+    department: Optional[str] = Query(None, description="Global filter: department"),
+    store: Optional[str] = Query(None, description="Global filter: store/camera_group"),
     db: Session = Depends(get_db)
 ):
     """Get waiting time analytics data for people waiting more than 10 minutes"""
@@ -83,6 +85,11 @@ async def get_waiting_time_analytics(
         
         if camera_group_list:
             filters.append(CameraEvent.camera_group.in_(camera_group_list))
+        # Apply global filters
+        if department:
+            filters.append(CameraEvent.department == department)
+        if store:
+            filters.append(CameraEvent.camera_group == store)
         
         # Determine time truncation based on view_type
         if view_type == "hourly":

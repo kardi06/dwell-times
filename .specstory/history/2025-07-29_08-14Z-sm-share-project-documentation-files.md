@@ -6864,3 +6864,186 @@ If you want, I can implement the endpoints and the HierarchyFilters component ne
 
 ---
 
+_**User**_
+
+let's make another story, to make global filter for @Dashboard.tsx 
+in dashboard we have KPIMetric card, dwell time aanalytic, foot traffic, and waiting time.
+we want to make global filter that change all data, but we will have local filter too for each component (chart).
+for global filter we want
+- department
+- store
+- time periode , and of course with the date. (maybe same with in @ChartFilters.tsx ) 
+for local filter:
+- Dwell time -> camera and metric type
+- Foot traffic -> camera , view type
+- waiting time -> camera , view type.
+
+make sure the dashboard (each component) beauty, easy to see, easy to use (good ux)
+don't make any change if you don't understand minimal 98%
+ask me if you don't understand. 
+if understand do it 
+
+---
+
+_**Assistant**_
+
+<think><details><summary>Thought Process</summary>**Planning frontend tasks**
+
+I need to add documentation for my frontend tasks. First, I'll create a GlobalFilterBar component and integrate it with the Dashboard while ensuring the state is maintained in the URL and context. I'll pass data to components, update fetching to include query parameters, and unify the ChartFilters for the time period, along with local filter UIs.
+
+Next, I'm considering UX details like accessibility, mobile responsiveness, a sticky filter bar, tooltips, icons, and proper error handling. After that, I’ll focus on testing through unit tests, integration tests, and end-to-end tests. Lastly, I’ll look into performance improvements using debouncing, caching, and react-query. Alright, let’s implement this!</details></think>
+
+---
+
+<details><summary>Edit file: docs/stories/1.14.dashboard-global-and-local-filters.md</summary>
+
+I will create a new story describing global filters for the dashboard and local filters per chart, including UX, API and implementation details.
+
+**Chunk 1**
+Lines added: 118, lines removed: 1
+
+```diff
+@@ -1,1 +1,118 @@
+- 
++ # Story 1.14: Dashboard Global + Local Filters (Beautiful, Easy, Consistent)
++ 
++ ## Status
++ Ready for Review
++ 
++ ## Story
++ **As a** dashboard user,
++ **I want** a single, beautiful global filter that changes all dashboard data and simple local filters per visualization,
++ **so that** I can quickly focus analysis at the right scope while still refining each chart as needed.
++ 
++ ## Scope (Dashboard.tsx)
++ Impacts these blocks:
++ - KPI Metric Cards
++ - Dwell Time Analytics (Bar + Line)
++ - Foot Traffic Analytics
++ - Waiting Time Analytics
++ 
++ ## Global Filter (applies to all blocks)
++ - Department → `camera_events.department`
++ - Store (aka "camera group") → `camera_events.camera_group`
++ - Time period + Date selector (same interaction model as `ChartFilters.tsx`)
++   - TimePeriod: day | week | month | quarter | year
++   - A single date input whose meaning adapts to the TimePeriod
++   - Start/End date computed on the client and sent to backend as `start_date`/`end_date`
++ 
++ Rules
++ - Global filters are always applied to every backend request from all dashboard blocks.
++ - Local filters further narrow down the global result (never widen/override it).
++ - A prominent "Apply" button updates all blocks at once. A "Reset" restores defaults.
++ 
++ ## Local Filters (per component)
++ - Dwell Time → Camera (`camera_description`), Metric Type (total | average)
++ - Foot Traffic → Camera (`camera_description`), View Type (hourly | daily)
++ - Waiting Time → Camera (`camera_description`), View Type (hourly | daily)
++ 
++ ## Acceptance Criteria
++ 1. **Global Filter Bar** is visible at top of Dashboard, responsive, keyboard accessible, and sticky on scroll.
++ 2. **KPI Cards**, **Dwell Time**, **Foot Traffic**, **Waiting Time** all requery with the same global filters when user clicks Apply.
++ 3. Each chart also has a minimal **Local Filter** row aligned to the right inside its card.
++ 4. Local filters combine with global filters (intersection). Clearing local filter returns to global baseline.
++ 5. Date/TimePeriod behavior matches `ChartFilters.tsx` UX (clear labels, preview text next to picker).
++ 6. Show loading skeletons and disabled states while (re)loading; clear errors.
++ 7. Persist last used global filters in URL query params and localStorage.
++ 8. Mobile UX: global filter collapses into accordions; selects remain searchable.
++ 
++ ## API Contract (non-breaking; add optional params)
++ All analytics endpoints must accept and apply these global params:
++ - `department` (string)
++ - `store` (string; camera group)
++ - `start_date` (YYYY-MM-DD)
++ - `end_date` (YYYY-MM-DD)
++ 
++ Per-chart local params:
++ - Dwell Time: `camera`, `metric_type`
++ - Foot Traffic: `camera`, `view_type`
++ - Waiting Time: `camera`, `view_type`
++ 
++ Endpoints concerned:
++ - `/api/v1/analytics/kpi-metrics`
++ - `/api/v1/analytics/dwell-time-analytics`
++ - `/api/v1/analytics/chart-data` (if used by dwell time)
++ - `/api/v1/analytics/foot-traffic-data`
++ - `/api/v1/analytics/waiting-time`
++ 
++ ## Backend Tasks
++ - [ ] Add/confirm support for `department`, `store`, `start_date`, `end_date` on all endpoints above.
++ - [ ] Ensure per-endpoint local params are also supported and combined with global filters.
++ - [ ] Update OpenAPI/Swagger docs.
++ - [ ] Add unit tests for WHERE clause composition (global + local).
++ 
++ ## Frontend Tasks
++ - [ ] Create `GlobalFilterBar` component (to be placed above KPIs):
++   - Department Select (searchable)
++   - Store Select (searchable; filtered by Department)
++   - TimePeriod Select + DatePicker (reuse/compose from `ChartFilters.tsx`)
++   - Apply + Reset buttons
++ - [ ] State management:
++   - Use React Context or a lightweight store (e.g., Zustand) for global filters.
++   - Sync to URL query params (?department=&store=&time_period=&date=) and localStorage.
++ - [ ] Wire Dashboard blocks to global filter state (KPI + all charts).
++ - [ ] Add **local filter row** to each chart card:
++   - Dwell Time: Camera select + Metric Type select
++   - Foot Traffic: Camera select + View Type (hourly/daily)
++   - Waiting Time: Camera select + View Type (hourly/daily)
++ - [ ] Ensure local selections only affect their own requests.
++ - [ ] Debounce network calls; show skeletons while loading.
++ 
++ ## UX / Visual Design
++ - Consistent spacing and typography with current dashboard style.
++ - Filter controls grouped, labeled, and aligned; helper text visible.
++ - Clear chips/pills show active filters (optional nice-to-have).
++ - Sticky filter bar on desktop; collapsible on mobile.
++ - Accessible: labeled inputs, focus rings, keyboard navigation.
++ 
++ ## Performance
++ - Debounced filter changes; apply commits once.
++ - React Query (or similar) caching; avoid duplicate calls.
++ - Memoize derived date ranges; avoid re-renders.
++ 
++ ## Testing
++ - Unit: GlobalFilterBar state, date computations, URL sync; local filter reducers.
++ - Integration: End-to-end fetch per block with combined filters; reset/apply cycles.
++ - Visual/UX: mobile behavior, sticky header, skeleton loading.
++ 
++ ## Non-Goals
++ - Multi-select at each level (can be follow-up).
++ - Saved filter presets (follow-up).
++ 
++ ## Notes
++ - Store == `camera_group`.
++ - Keep filter param names consistent across endpoints.
++ - Reuse `ChartFilters.tsx` patterns for date/period to ensure consistent UX.
++ 
++ ## Change Log
++ | Date       | Version | Description                              | Author |
++ |------------|---------|------------------------------------------|--------|
++ | 2025-01-30 | 1.0     | Initial story for global + local filters | SM     |
++ 
+```
+
+</details>
+
+---
+
+Added Story 1.14: Dashboard Global + Local Filters
+
+- File: docs/stories/1.14.dashboard-global-and-local-filters.md
+- Defines a beautiful, consistent global filter bar in Dashboard.tsx:
+  - Department (camera_events.department)
+  - Store (camera_events.camera_group)
+  - Time period + adaptive date selection (same UX pattern as ChartFilters.tsx)
+- Local filters per component:
+  - Dwell Time: camera (camera_description) + metric type
+  - Foot Traffic: camera + view type (hourly/daily)
+  - Waiting Time: camera + view type (hourly/daily)
+- Specifies API params to be supported across endpoints and how local filters combine with global filters.
+- Includes UX, performance, state management, and testing guidance.
+
+If you want, I can implement the GlobalFilterBar component and wire it into Dashboard.tsx next.
+
+---
+

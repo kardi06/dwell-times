@@ -5,7 +5,8 @@ import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters } from './Charts';
 import { ChartDataPoint } from './Charts/DwellTimeBarChart';
 import { TimePeriod, MetricType } from './Charts/ChartFilters';
 import { FootTrafficAnalytics } from './FootTrafficAnalytics';
-import { HierarchyFilters } from './HierarchyFilters';
+import { GlobalFilterBar } from './GlobalFilterBar';
+
 import { WaitingTimeAnalytics } from './WaitingTimeAnalytics';
 import MetricCard from './MetricCard';
 import { CircleUserRound, FileVideoCamera, History, Clock } from 'lucide-react';
@@ -47,7 +48,8 @@ interface KPIMetrics {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ token }) => {
-  const [filters, setFilters] = useState<{ department: string; store: string; camera: string }>({ department: '', store: '', camera: '' });
+  // Kept for compatibility with local per-chart filters when needed
+const [filters, setFilters] = useState<{ department: string; store: string; camera: string }>({ department: '', store: '', camera: '' });
   const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -324,15 +326,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
           </Alert>
         )}
 
-        {/* Filters: Division→Department→Store→Camera */}
-        <div className="mb-6">
-          <HierarchyFilters
-            department={filters.department}
-            store={filters.store}
-            camera={filters.camera}
-            onChange={(vals)=>setFilters(vals)}
-          />
-        </div>
+        {/* Global Filter Bar */}
+        <GlobalFilterBar />
 
         {/* Metrics Cards Section */}
         <section className="mb-8">
