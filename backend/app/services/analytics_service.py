@@ -25,18 +25,31 @@ class AnalyticsService:
         logger.info("Calculating KPI metrics...")
         
         try:
+            # Make end_date inclusive to end of day if provided (so <= works as expected)
+            inclusive_end: Optional[datetime] = None
+            if end_date:
+                inclusive_end = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+
             # Base query for date filtering
             base_query = self.db.query(CameraEvent)
+            # OLD: created_at
+            # if start_date:
+            #     base_query = base_query.filter(CameraEvent.created_at >= start_date)
+            # if inclusive_end:
+            #     base_query = base_query.filter(CameraEvent.created_at <= inclusive_end)
+            # NEW: utc_time_started_readable (matches analytics elsewhere)
             if start_date:
-                base_query = base_query.filter(CameraEvent.created_at >= start_date)
-            if end_date:
-                base_query = base_query.filter(CameraEvent.created_at <= end_date)
+                base_query = base_query.filter(CameraEvent.utc_time_started_readable >= start_date)
+            if inclusive_end:
+                base_query = base_query.filter(CameraEvent.utc_time_started_readable <= inclusive_end)
             if department:
                 base_query = base_query.filter(CameraEvent.department == department)
             if store:
                 base_query = base_query.filter(CameraEvent.camera_group == store)
             if camera:
                 base_query = base_query.filter(CameraEvent.camera_description == camera)
+
+            logger.info(f"KPI filters - start: {start_date}, end: {inclusive_end}, dept: {department}, store: {store}, camera: {camera}")
             
             # Total unique visitors
             unique_visitors = base_query.with_entities(
@@ -51,12 +64,12 @@ class AnalyticsService:
                 func.count(func.distinct(CameraEvent.camera_id))
             ).scalar() or 0
             
-            # Dwell time metrics from sessions
+            # Dwell time metrics from sessions (legacy; may be empty if sessions are not populated)
             session_query = self.db.query(PersonSession)
             if start_date:
                 session_query = session_query.filter(PersonSession.entry_time >= start_date)
-            if end_date:
-                session_query = session_query.filter(PersonSession.exit_time <= end_date)
+            if inclusive_end:
+                session_query = session_query.filter(PersonSession.exit_time <= inclusive_end)
             # Apply camera constraint to sessions if provided (no group/department available on PersonSession)
             if camera:
                 session_query = session_query.filter(PersonSession.camera_id == camera)
@@ -65,16 +78,29 @@ class AnalyticsService:
             
             if sessions:
                 dwell_times = [s.dwell_duration for s in sessions if s.dwell_duration]
-                avg_dwell_time = sum(dwell_times) / len(dwell_times) if dwell_times else 0
-                max_dwell_time = max(dwell_times) if dwell_times else 0
-                median_dwell_time = sorted(dwell_times)[len(dwell_times) // 2] if dwell_times else 0
+                avg_dwell_time_session = sum(dwell_times) / len(dwell_times) if dwell_times else 0
+                max_dwell_time_session = max(dwell_times) if dwell_times else 0
+                median_dwell_time_session = sorted(dwell_times)[len(dwell_times) // 2] if dwell_times else 0
             else:
-                avg_dwell_time = max_dwell_time = median_dwell_time = 0
+                avg_dwell_time_session = max_dwell_time_session = median_dwell_time_session = 0
+
+            # Prefer events-based dwell computations since they respect department/store filters directly
+            avg_dwell_time_events = base_query.with_entities(func.avg(CameraEvent.dwell_time)).scalar() or 0
+            max_dwell_time_events = base_query.with_entities(func.max(CameraEvent.dwell_time)).scalar() or 0
+            # min not used in card, but keep for completeness
+            min_dwell_time_events = base_query.with_entities(func.min(CameraEvent.dwell_time)).scalar() or 0
+
+            avg_dwell_time = float(avg_dwell_time_events) if avg_dwell_time_events else float(avg_dwell_time_session)
+            max_dwell_time = int(max_dwell_time_events) if max_dwell_time_events else int(max_dwell_time_session)
+            median_dwell_time = int(median_dwell_time_session)  # events median omitted for performance
             
             metrics = {
                 'total_unique_visitors': unique_visitors,
                 'total_events_processed': total_events,
                 'active_cameras_count': active_cameras,
+                # OLD: session-based average
+                # 'average_dwell_time_seconds': round(avg_dwell_time_session, 2),
+                # NEW: prefer events-based average dwell time (seconds)
                 'average_dwell_time_seconds': round(avg_dwell_time, 2),
                 'median_dwell_time_seconds': median_dwell_time,
                 'maximum_dwell_time_seconds': max_dwell_time,
@@ -84,7 +110,7 @@ class AnalyticsService:
             
             logger.info(f"KPI metrics calculated: {unique_visitors} visitors, {total_events} events")
             return metrics
-            
+        
         except Exception as e:
             logger.error(f"KPI calculation failed: {e}")
             raise AnalyticsError(f"KPI calculation failed: {str(e)}")

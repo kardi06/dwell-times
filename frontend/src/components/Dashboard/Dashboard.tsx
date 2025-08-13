@@ -1,21 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Card, Alert, Button, Loading } from '../ui';
+import React, { useState, useEffect } from "react";
+import { 
+  Card, 
+  Alert, 
+  // Button, 
+  // Loading 
+} from "../ui";
 // import EventTable from './EventTable';
-import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters } from './Charts';
-import { ChartDataPoint } from './Charts/DwellTimeBarChart';
-import { TimePeriod, MetricType } from './Charts/ChartFilters';
-import { FootTrafficAnalytics } from './FootTrafficAnalytics';
-import { GlobalFilterBar } from './GlobalFilterBar';
+import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters } from "./Charts";
+import { ChartDataPoint } from "./Charts/DwellTimeBarChart";
+import { TimePeriod, MetricType } from "./Charts/ChartFilters";
+import { FootTrafficAnalytics } from "./FootTrafficAnalytics";
+import { GlobalFilterBar } from "./GlobalFilterBar";
 
-import { WaitingTimeAnalytics } from './WaitingTimeAnalytics';
-import MetricCard from './MetricCard';
-import { CircleUserRound, FileVideoCamera, History, Clock } from 'lucide-react';
+import { WaitingTimeAnalytics } from "./WaitingTimeAnalytics";
+import MetricCard from "./MetricCard";
+import { CircleUserRound, FileVideoCamera, History } from "lucide-react";
 // import ChartFiltersSection from './ChartFiltersSection';
-import { FootTrafficChartConfig } from './Charts/FootTrafficChart';
+import { FootTrafficChartConfig } from "./Charts/FootTrafficChart";
 // import { FootTrafficFilters } from './Charts/FootTrafficFilters';
-import DatePicker from 'react-datepicker';
-import { useGlobalFilters } from '../../store/globalFilters';
-import 'react-datepicker/dist/react-datepicker.css';
+// import DatePicker from 'react-datepicker';
+import { useGlobalFilters } from "../../store/globalFilters";
+// import { computeRange, toApiDate } from "../../utils/dateRange";
+import "react-datepicker/dist/react-datepicker.css";
 
 interface DashboardProps {
   token: string;
@@ -50,116 +56,181 @@ interface KPIMetrics {
 
 const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   // Kept for compatibility with local per-chart filters when needed
-const [filters, setFilters] = useState<{ department: string; store: string; camera: string }>({ department: '', store: '', camera: '' });
+  const [filters, setFilters] = useState<{
+    department: string;
+    store: string;
+    camera: string;
+  }>({ department: "", store: "", camera: "" });
   const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  
+  const [error, setError] = useState("");
+
   // KPI date range state
-  const [kpiStartDate, setKpiStartDate] = useState<Date | null>(null);
-  const [kpiEndDate, setKpiEndDate] = useState<Date | null>(null);
-  
+  // const [kpiStartDate, setKpiStartDate] = useState<Date | null>(null);
+  // const [kpiEndDate, setKpiEndDate] = useState<Date | null>(null);
+
   // Chart state
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
-  const [timePeriod, setTimePeriod] = useState<TimePeriod>('week');
-  const [metricType, setMetricType] = useState<MetricType>('average');
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
+  const [metricType, setMetricType] = useState<MetricType>("average");
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
-  const [config, setConfig] = useState<FootTrafficChartConfig>({
-    timePeriod: 'weekly',
-    selectedDate: new Date(),
-    cameraFilter: 'all',
-    viewType: 'daily'
-  });
+  // const [config, setConfig] = useState<FootTrafficChartConfig>({
+  //   timePeriod: "weekly",
+  //   selectedDate: new Date(),
+  //   cameraFilter: "all",
+  //   viewType: "daily",
+  // });
 
   const formatDateForApi = (date: Date) => {
     const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   };
 
+  // Global filters
+	const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters();
+
   const fetchMetrics = async () => {
     setLoading(true);
-    setError('');
-    
+    setError("");
+
     try {
-             // Build KPI params from Global Filters
-       const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters.getState();
-       const kpiParams = new URLSearchParams();
-       if (gDate) {
-         const { computeRange } = await import('../../utils/dateRange');
-         const { toApiDate } = await import('../../utils/dateRange');
-         const { start, end } = computeRange(gPeriod, gDate);
-         kpiParams.append('start_date', toApiDate(start));
-         kpiParams.append('end_date', toApiDate(end));
-       }
-       if (gDept) kpiParams.append('department', gDept);
-       if (gStore) kpiParams.append('store', gStore);
-       if (filters.camera) kpiParams.append('camera', filters.camera);
+      // Build KPI params from Global Filters
+      // const {
+      //   department: gDept,
+      //   store: gStore,
+      //   timePeriod: gPeriod,
+      //   date: gDate,
+      // // } = useGlobalFilters.getState();
+      // } = useGlobalFilters();
+      const kpiParams = new URLSearchParams();
+      if (gDate) {
+        const { computeRange } = await import("../../utils/dateRange");
+        const { toApiDate } = await import("../../utils/dateRange");
+        const { start, end } = computeRange(gPeriod, gDate);
+        kpiParams.append("start_date", toApiDate(start));
+        kpiParams.append("end_date", toApiDate(end));
+      }
+      if (gDept) kpiParams.append("department", gDept);
+      if (gStore) kpiParams.append("store", gStore);
 
-       // Fetch basic KPI metrics
+      // Fetch basic KPI metrics
 
-      
       // const kpiResponse = await fetch(`http://localhost:8000/api/v1/
       //   analytics/kpi-metrics?${kpiParams.toString()}`, {
-      const kpiResponse = await fetch(`/api/v1/analytics/kpi-metrics?${kpiParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const kpiResponse = await fetch(
+        `/api/v1/analytics/kpi-metrics?${kpiParams.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
       // Fetch demographic analytics
-      const demographicResponse = await fetch('http://localhost:8000/api/v1/analytics/demographic-insights', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // const demographicResponse = await fetch(
+      //   "http://localhost:8000/api/v1/analytics/demographic-insights",
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   },
+      // );
+      const demographicResponse = await fetch(
+        `/api/v1/analytics/demographic-insights`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
       // Fetch waiting time metrics
-      const waitingTimeResponse = await fetch('http://localhost:8000/api/v1/analytics/waiting-time?view_type=daily', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // const waitingTimeResponse = await fetch(
+      //   "http://localhost:8000/api/v1/analytics/waiting-time?view_type=daily",
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   },
+      // );
+      const waitingTimeResponse = await fetch(
+        `/api/v1/analytics/waiting-time?view_type=daily`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
-      if (kpiResponse.ok && demographicResponse.ok && waitingTimeResponse.ok) {
+      // OLD: required all three calls to succeed before updating KPIs
+      // if (kpiResponse.ok && demographicResponse.ok && waitingTimeResponse.ok) {
+      //   const kpiData = await kpiResponse.json();
+      //   const demographicData = await demographicResponse.json();
+      //   const waitingTimeData = await waitingTimeResponse.json();
+      //   // ... combine and setMetrics
+      // } else {
+      //   setError("Failed to fetch metrics");
+      // }
+
+      // NEW: set KPIs as soon as KPI endpoint succeeds; others are optional
+      if (kpiResponse.ok) {
         const kpiData = await kpiResponse.json();
-        const demographicData = await demographicResponse.json();
-        const waitingTimeData = await waitingTimeResponse.json();
-        
-        // Calculate waiting time metrics
-        const totalWaitingPeople = waitingTimeData.data?.reduce((sum: number, item: any) => sum + item.waiting_count, 0) || 0;
-        
-        // Map backend KPI keys to UI keys
         const k = kpiData.kpi_metrics || {};
-        const mappedKpis: KPIMetrics = {
+        const base: KPIMetrics = {
           total_unique_visitors: k.total_unique_visitors ?? 0,
           total_events_processed: k.total_events_processed ?? 0,
           cameras_with_activity: k.active_cameras_count ?? 0,
           average_dwell_time: k.average_dwell_time_seconds ?? 0,
           max_dwell_time: k.maximum_dwell_time_seconds ?? 0,
         };
-        
-        // Combine the metrics
-        const combinedMetrics: KPIMetrics = {
-          ...mappedKpis,
-          waiting_time_metrics: {
-            total_waiting_people: totalWaitingPeople,
-            peak_waiting_period: 'N/A', // Could be calculated from data
-            avg_waiting_time: 0 // Could be calculated from data
-          },
-          gender_analytics: demographicData.demographic_insights?.filter((item: any) => item.gender) || [],
-          age_group_analytics: demographicData.demographic_insights?.filter((item: any) => item.age_group) || []
-        };
-        
-        setMetrics(combinedMetrics);
+
+        let combined: KPIMetrics = { ...base };
+
+        try {
+          if (waitingTimeResponse.ok) {
+            const waitingTimeData = await waitingTimeResponse.json();
+            const totalWaitingPeople = waitingTimeData.data?.reduce(
+              (sum: number, item: any) => sum + item.waiting_count,
+              0,
+            ) || 0;
+            combined = {
+              ...combined,
+              waiting_time_metrics: {
+                total_waiting_people: totalWaitingPeople,
+                peak_waiting_period: "N/A",
+                avg_waiting_time: 0,
+              },
+            };
+          }
+        } catch {}
+
+        try {
+          if (demographicResponse.ok) {
+            const demographicData = await demographicResponse.json();
+            combined = {
+              ...combined,
+              gender_analytics:
+                demographicData.demographic_insights?.filter(
+                  (item: any) => item.gender,
+                ) || [],
+              age_group_analytics:
+                demographicData.demographic_insights?.filter(
+                  (item: any) => item.age_group,
+                ) || [],
+            };
+          }
+        } catch {}
+
+        setMetrics(combined);
       } else {
-        setError('Failed to fetch metrics');
+        setError("Failed to fetch metrics");
       }
     } catch (err) {
-      setError('Network error while fetching metrics');
+      setError("Network error while fetching metrics");
     } finally {
       setLoading(false);
     }
@@ -181,40 +252,47 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
       // Build query parameters
       const params = new URLSearchParams({
         time_period: timePeriod,
-        metric_type: metricType
+        metric_type: metricType,
       });
       // Append global filters
-      const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters.getState();
-      if (gDept) params.append('department', gDept);
-      if (gStore) params.append('store', gStore);
-      if (filters.camera) params.append('camera', filters.camera);
+      const {
+        department: gDept,
+        store: gStore,
+        timePeriod: gPeriod,
+        date: gDate,
+      } = useGlobalFilters.getState();
+      if (gDept) params.append("department", gDept);
+      if (gStore) params.append("store", gStore);
+      if (filters.camera) params.append("camera", filters.camera);
 
       // Global date range overrides local
       if (gDate) {
-        const { computeRange, toApiDate } = await import('../../utils/dateRange');
+        const { computeRange, toApiDate } = await import(
+          "../../utils/dateRange"
+        );
         const { start, end } = computeRange(gPeriod, gDate);
-        params.append('start_date', toApiDate(start));
-        params.append('end_date', toApiDate(end));
+        params.append("start_date", toApiDate(start));
+        params.append("end_date", toApiDate(end));
       } else if (selectedDate) {
         let startDate = selectedDate;
         let endDate = new Date(selectedDate);
-        
+
         // For quarters, adjust the start date to beginning of quarter
-        if (timePeriod === 'quarter') {
+        if (timePeriod === "quarter") {
           const quarter = Math.floor(selectedDate.getMonth() / 3);
           const startMonth = quarter * 3;
           startDate = new Date(selectedDate.getFullYear(), startMonth, 1);
         }
-        
+
         const startDateStr = formatDateForApi(startDate);
-        params.append('start_date', startDateStr);
-        
+        params.append("start_date", startDateStr);
+
         // For different time periods, calculate end date
         switch (timePeriod) {
-          case 'day':
+          case "day":
             // Same day
             break;
-          case 'week':
+          case "week":
             // Align with UI week display (Sun-Sat)
             const startOfWeek = new Date(selectedDate);
             startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
@@ -222,44 +300,52 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
             endDate = new Date(startOfWeek);
             endDate.setDate(startOfWeek.getDate() + 6);
             // Update start_date param to the computed start of week
-            params.set('start_date', formatDateForApi(startDate));
+            params.set("start_date", formatDateForApi(startDate));
             break;
-          case 'month':
+          case "month":
             endDate.setMonth(selectedDate.getMonth() + 1);
             endDate.setDate(0); // Last day of the month
             break;
-          case 'quarter':
+          case "quarter":
             // Calculate proper quarter boundaries
             const quarter = Math.floor(selectedDate.getMonth() / 3);
             const startMonth = quarter * 3;
             const endMonth = startMonth + 2;
             endDate = new Date(selectedDate.getFullYear(), endMonth + 1, 0); // Last day of the last month in quarter
             break;
-          case 'year':
+          case "year":
             endDate.setFullYear(selectedDate.getFullYear() + 1);
             endDate.setDate(0);
             break;
         }
-        params.append('end_date', formatDateForApi(endDate));
+        params.append("end_date", formatDateForApi(endDate));
       }
 
+      // const response = await fetch(
+      //   `http://localhost:8000/api/v1/analytics/chart-data?${params.toString()}`,
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${token}`,
+      //     },
+      //   },
+      // );
       const response = await fetch(
-        `http://localhost:8000/api/v1/analytics/chart-data?${params.toString()}`,
+        `/api/v1/analytics/chart-data?${params.toString()}`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
 
       if (response.ok) {
         const data = await response.json();
         setChartData(data.chart_data || []);
       } else {
-        console.error('Failed to fetch chart data');
+        console.error("Failed to fetch chart data");
       }
     } catch (err) {
-      console.error('Error fetching chart data:', err);
+      console.error("Error fetching chart data:", err);
     } finally {
       setChartLoading(false);
     }
@@ -268,37 +354,13 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
   useEffect(() => {
     fetchMetrics();
     fetchChartData();
-  }, [token, filters]);
+  }, [token, filters, gDept, gStore, gPeriod, gDate]);
 
   useEffect(() => {
     fetchChartData();
   }, [timePeriod, metricType, selectedDate, filters]);
 
-  const renderKpiDateFilters = () => (
-    <div className="flex items-end gap-3">
-      <div className="flex flex-col">
-        <label className="text-sm text-gray-700 mb-1">Start Date</label>
-        <DatePicker
-          selected={kpiStartDate}
-          onChange={setKpiStartDate}
-          dateFormat="MM/dd/yyyy"
-          placeholderText="Select start date"
-          className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-      <div className="flex flex-col">
-        <label className="text-sm text-gray-700 mb-1">End Date</label>
-        <DatePicker
-          selected={kpiEndDate}
-          onChange={setKpiEndDate}
-          dateFormat="MM/dd/yyyy"
-          placeholderText="Select end date"
-          className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
-      <Button variant="outline" size="sm" onClick={fetchMetrics} className="mb-1">Apply</Button>
-    </div>
-  );
+  // const renderKpiDateFilters = () => null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
@@ -310,11 +372,11 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
                 Analytics Dashboard
               </h1>
-              <p className="text-gray-600">
+              {/* <p className="text-gray-600">
                 Real-time insights and performance metrics
-              </p>
+              </p> */}
             </div>
-            <Button
+            {/* <Button
               variant="outline"
               size="sm"
               onClick={fetchMetrics}
@@ -325,7 +387,7 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
               <span>Refresh Data</span>
-            </Button>
+            </Button> */}
           </div>
         </div>
 
@@ -341,13 +403,14 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
 
         {/* Metrics Cards Section */}
         <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          {/* <div className="flex items-center justify-between mb-4">
             <div>
-              {/* <h2 className="text-2xl font-bold text-gray-900">Key Performance Indicators</h2> */}
-              <p className="text-gray-600 text-sm">Filter metrics by date range</p>
+              <h2 className="text-2xl font-bold text-gray-900">Key Performance Indicators</h2>
+              <p className="text-gray-600 text-sm">
+                Filter metrics by date range
+              </p>
             </div>
-            {renderKpiDateFilters()}
-          </div>
+          </div> */}
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
@@ -360,26 +423,28 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4 animate-pulse"></div>
               <p className="text-gray-500 text-lg">No data available</p>
-              <p className="text-gray-400 text-sm mt-2">Upload some data to see analytics</p>
+              <p className="text-gray-400 text-sm mt-2">
+                Upload some data to see analytics
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <MetricCard
                 title="Total Visitors"
                 value={metrics.total_unique_visitors || 0}
-                icon={<CircleUserRound  />}
+                icon={<CircleUserRound />}
                 color="teal"
               />
               <MetricCard
                 title="Avg Dwell Time"
-                value={`${Math.round((metrics.average_dwell_time || 0) / 60)} min`}
-                icon={<History  />}
+                value={`${((metrics?.average_dwell_time ?? 0) / 60).toFixed(2)} min`}
+                icon={<History />}
                 color="yellow"
               />
               <MetricCard
                 title="Active Cameras"
                 value={metrics.cameras_with_activity || 0}
-                icon={<FileVideoCamera  />}
+                icon={<FileVideoCamera />}
                 color="purple"
               />
             </div>
@@ -422,7 +487,7 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
                   />
                 </div> */}
               </div>
-              <div className='space-y-4'>
+              <div className="space-y-4">
                 <ChartFilters
                   timePeriod={timePeriod}
                   metricType={metricType}
@@ -493,4 +558,4 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
   );
 };
 
-export default Dashboard; 
+export default Dashboard;

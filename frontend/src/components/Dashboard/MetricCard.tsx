@@ -7,10 +7,19 @@ interface MetricCardProps {
   title: string;
   value: string | number;
   trend?: number;
-  color: 'teal' | 'purple' | 'yellow';
+  color: 'teal' | 'purple' | 'yellow' | 'red' | 'blue';
   icon: React.ReactNode;
   loading?: boolean;
+  subtitle?: string;
 }
+
+const colorMap: Record<NonNullable<MetricCardProps['color']>, string> = {
+  teal: 'bg-gradient-to-br from-teal-500 via-teal-600 to-teal-700 text-white',
+  purple: 'bg-gradient-to-br from-fuchsia-500 via-purple-600 to-indigo-700 text-white',
+  yellow: 'bg-gradient-to-br from-amber-400 via-amber-500 to-orange-500 text-gray-900',
+  red: 'bg-gradient-to-br from-rose-500 via-red-600 to-red-700 text-white',
+  blue: 'bg-gradient-to-br from-sky-500 via-blue-600 to-indigo-700 text-white',
+};
 
 const MetricCard: React.FC<MetricCardProps> = ({
   title,
@@ -18,54 +27,44 @@ const MetricCard: React.FC<MetricCardProps> = ({
   trend,
   color,
   icon,
-  loading = false
+  loading = false,
+  subtitle,
 }) => {
   const getTrendIcon = () => {
-    if (trend && trend > 0) return <TrendingUp className="w-4 h-4 text-success-green" />;
-    if (trend && trend < 0) return <TrendingDown className="w-4 h-4 text-error-red" />;
-    return <Minus className="w-4 h-4 text-gray-500" />;
-  };
-
-  const getColorClasses = () => {
-    switch (color) {
-      case 'teal':
-        return 'bg-accent-teal border-teal-200';
-      case 'purple':
-        return 'bg-accent-purple border-purple-200';
-      case 'yellow':
-        return 'bg-accent-yellow border-yellow-200';
-      default:
-        return 'bg-white border-gray-200';
-    }
+    if (trend && trend > 0) return <TrendingUp className="w-4 h-4" />;
+    if (trend && trend < 0) return <TrendingDown className="w-4 h-4" />;
+    return <Minus className="w-4 h-4 opacity-70" />;
   };
 
   if (loading) {
     return (
-      <Card className={`${getColorClasses()} h-32`}>
+      <Card className={`h-32 ${colorMap[color]} bg-opacity-60`}>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse" />
-            <div className="w-16 h-4 bg-gray-200 rounded animate-pulse" />
+            <div className="w-8 h-8 bg-white/30 rounded-lg animate-pulse" />
+            <div className="w-16 h-4 bg-white/30 rounded animate-pulse" />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="h-8 bg-gray-200 rounded animate-pulse mb-2" />
-          <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
+          <div className="h-8 bg-white/30 rounded animate-pulse mb-2" />
+          <div className="h-4 bg-white/30 rounded w-1/2 animate-pulse" />
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className={`${getColorClasses()} h-32 transition-all duration-200 hover:shadow-md`}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <p className="text-xl font-bold text-secondary-900 mb-2">{title}</p>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm">
-            {icon}
+    <Card className={`h-32 ${colorMap[color]} shadow-sm hover:shadow-md transition-all duration-200`}>
+      <CardHeader className="pb-1">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center">
+              {icon}
+            </div>
+            <p className="text-sm font-medium opacity-90">{title}</p>
           </div>
           {trend !== undefined && (
-            <div className="flex items-center space-x-1">
+            <div className="flex items-center space-x-1 opacity-90">
               {getTrendIcon()}
               <span className={`text-sm font-medium ${getTrendColor(trend)}`}>
                 {formatTrend(trend)}
@@ -75,10 +74,10 @@ const MetricCard: React.FC<MetricCardProps> = ({
         </div>
       </CardHeader>
       <CardContent>
-        <CardTitle className="text-2xl font-bold text-gray-900 mb-1">
+        <CardTitle className="text-3xl font-extrabold tracking-tight">
           {typeof value === 'number' ? formatNumber(value) : value}
         </CardTitle>
-        
+        {subtitle && <p className="text-xs opacity-90 mt-1">{subtitle}</p>}
       </CardContent>
     </Card>
   );
