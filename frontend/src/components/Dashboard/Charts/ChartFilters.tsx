@@ -5,6 +5,8 @@ import "react-datepicker/dist/react-datepicker.css";
 export type TimePeriod = "day" | "week" | "month" | "quarter" | "year";
 export type MetricType = "total" | "average";
 
+type CameraOption = { value: string; label: string };
+
 interface ChartFiltersProps {
   timePeriod: TimePeriod;
   metricType: MetricType;
@@ -12,6 +14,10 @@ interface ChartFiltersProps {
   onTimePeriodChange: (period: TimePeriod) => void;
   onMetricTypeChange: (type: MetricType) => void;
   onDateChange: (date: Date | null) => void;
+  // Camera options & selection
+  cameraOptions?: CameraOption[];
+  selectedCamera?: string;
+  onCameraChange?: (camera: string) => void;
 }
 
 export const ChartFilters: React.FC<ChartFiltersProps> = ({
@@ -21,6 +27,9 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
   onTimePeriodChange,
   onMetricTypeChange,
   onDateChange,
+  cameraOptions = [],
+  selectedCamera = "",
+  onCameraChange,
 }) => {
   const timePeriodOptions = [
     { value: "day", label: "Day" },
@@ -35,7 +44,6 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
     { value: "average", label: "Average Dwell Time" },
   ];
 
-  // Helper function to format date based on time period
   const formatDateDisplay = (date: Date | null, period: TimePeriod): string => {
     if (!date) return "";
 
@@ -70,7 +78,6 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
     }
   };
 
-  // Helper function to get default date based on time period
   const getDefaultDate = (period: TimePeriod): Date => {
     const now = new Date();
     switch (period) {
@@ -82,7 +89,7 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
         return new Date(now.getFullYear(), now.getMonth(), 1);
       case "quarter":
         const quarter = Math.floor(now.getMonth() / 3);
-        return new Date(now.getFullYear(), quarter * 3, 1); // Start of current quarter
+        return new Date(now.getFullYear(), quarter * 3, 1);
       case "year":
         return new Date(now.getFullYear(), 0, 1);
       default:
@@ -90,7 +97,6 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
     }
   };
 
-  // Set default date when time period changes
   React.useEffect(() => {
     if (!selectedDate) {
       onDateChange(getDefaultDate(timePeriod));
@@ -99,33 +105,7 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
 
   return (
     <div className="space-y-4 mb-6 p-4 bg-white rounded-lg shadow-sm border">
-      {/* Existing Filters */}
       <div className="flex flex-wrap gap-4 items-end">
-        {/* OLD: Time Period control (hidden per new UX) */}
-        {/**
-        <div className="flex flex-col">
-          <label
-            htmlFor="timePeriod"
-            className="text-sm font-medium text-gray-700 mb-1"
-          >
-            Time Period
-          </label>
-          <select
-            id="timePeriod"
-            value={timePeriod}
-            onChange={(e) => onTimePeriodChange(e.target.value as TimePeriod)}
-            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            {timePeriodOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        */}
-
-        {/* Metric Type (kept) */}
         <div className="flex flex-col">
           <label
             htmlFor="metricType"
@@ -147,51 +127,20 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
           </select>
         </div>
 
-        {/* OLD: Date/Period Picker (hidden per new UX) */}
-        {/**
-        <div className="flex flex-col">
-          <label className="text-sm font-medium text-gray-700 mb-1">
-            {timePeriod === "day"
-              ? "Date"
-              : timePeriod === "week"
-                ? "Week"
-                : timePeriod === "month"
-                  ? "Month"
-                  : timePeriod === "quarter"
-                    ? "Quarter"
-                    : "Year"}
-          </label>
-          <div className="flex items-center gap-2">
-            <DatePicker
-              selected={selectedDate}
-              onChange={onDateChange}
-              dateFormat={
-                timePeriod === "day"
-                  ? "MM/dd/yyyy"
-                  : timePeriod === "week"
-                    ? "MM/dd/yyyy"
-                    : timePeriod === "month"
-                      ? "MM/yyyy"
-                      : timePeriod === "quarter"
-                        ? "MM/yyyy"
-                        : "yyyy"
-              }
-              showMonthYearPicker={
-                timePeriod === "month" || timePeriod === "quarter"
-              }
-              showYearPicker={timePeriod === "year"}
-              showWeekPicker={timePeriod === "week"}
-              placeholderText={`Select ${timePeriod}`}
-              className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            />
-            {selectedDate && (
-              <span className="text-sm text-gray-600">
-                {formatDateDisplay(selectedDate, timePeriod)}
-              </span>
-            )}
-          </div>
+        {/* Camera filter */}
+        <div className="flex flex-col min-w-[260px]">
+          <label className="text-sm font-medium text-gray-700 mb-1">Camera</label>
+          <select
+            value={selectedCamera}
+            onChange={(e) => onCameraChange && onCameraChange(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">All Cameras</option>
+            {cameraOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
         </div>
-        */}
       </div>
     </div>
   );

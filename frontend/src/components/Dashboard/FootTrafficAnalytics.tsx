@@ -3,6 +3,7 @@ import { FootTrafficChart, FootTrafficChartConfig } from './Charts/FootTrafficCh
 import { FootTrafficFilters } from './Charts/FootTrafficFilters';
 import { useFootTrafficData } from '../../hooks/useFootTrafficData';
 import { useCameras } from '../../hooks/useCameras';
+import { useGlobalFilters } from '../../store/globalFilters';
 
 export const FootTrafficAnalytics: React.FC = () => {
   const [config, setConfig] = useState<FootTrafficChartConfig>({
@@ -13,7 +14,11 @@ export const FootTrafficAnalytics: React.FC = () => {
   });
 
   const { data, isLoading, error } = useFootTrafficData(config);
-  const { cameras, isLoading: camerasLoading } = useCameras();
+  const { department: gDept, store: gStore } = useGlobalFilters();
+  const { cameras, isLoading: camerasLoading } = useCameras({ department: gDept || undefined, store: gStore || undefined });
+
+  // Map to unique camera names for the select (value-only to avoid object render)
+  const availableCameraNames: string[] = Array.from(new Set((cameras || []).map((c) => c.value)));
 
   const handleConfigChange = (newConfig: FootTrafficChartConfig) => {
     setConfig(newConfig);
@@ -33,7 +38,7 @@ export const FootTrafficAnalytics: React.FC = () => {
         <FootTrafficFilters
           config={config}
           onConfigChange={handleConfigChange}
-          availableCameras={cameras}
+          availableCameras={availableCameraNames}
           isLoading={camerasLoading}
         />
         

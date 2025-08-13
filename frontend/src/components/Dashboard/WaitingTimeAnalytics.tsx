@@ -5,6 +5,7 @@ import { useWaitingTimeData } from "../../hooks/useWaitingTimeData";
 import { analyticsAPI } from "../../services/api";
 import { useGlobalFilters } from "../../store/globalFilters";
 import { computeRange, toApiDate } from "../../utils/dateRange";
+import { useCameras as useFilteredCameras } from "../../hooks/useCameras";
 
 interface Camera {
 	id: string;
@@ -17,26 +18,16 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
 	const [viewType, setViewType] = useState<"hourly" | "daily">("hourly");
 	const [selectedGroup, setSelectedGroup] = useState("");
 	const [selectedCameras, setSelectedCameras] = useState<string[]>([]);
-	const [cameras, setCameras] = useState<Camera[]>([]);
+	// const [cameras, setCameras] = useState<Camera[]>([]);
 
 	// Global filters
 	const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters();
 
-	// Fetch cameras on component mount
-	useEffect(() => {
-		const fetchCameras = async () => {
-			try {
-				const response = await analyticsAPI.getCameras();
-				if (response.data && response.data.cameras) {
-					setCameras(response.data.cameras);
-				}
-			} catch (error) {
-				console.error("Failed to fetch cameras:", error);
-			}
-		};
-
-		fetchCameras();
-	}, []);
+	// Fetch cameras filtered by global department/store
+	const { cameras: cameraOpts } = useFilteredCameras({ department: gDept || undefined, store: gStore || undefined });
+	const cameras: Camera[] = useMemo(() => (
+		(cameraOpts || []).map((opt) => ({ id: opt.value, description: opt.value, group: opt.store || "" }))
+	), [cameraOpts]);
 
 	// Compute date range from global filters
 	const { start: rangeStart, end: rangeEnd } = useMemo(() => {
@@ -162,7 +153,7 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
 				onCameraChange={handleCameraChange}
 				date={gDate || new Date()}
 				onDateChange={() => {}}
-				cameraGroups={[...new Set(cameras.map((c) => c.group))]}
+				cameraGroups={[...new Set(cameras.map((c) => c.group).filter(Boolean))]}
 				cameras={cameras}
 				isLoading={isLoading}
 			/>

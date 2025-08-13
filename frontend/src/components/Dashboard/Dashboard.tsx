@@ -22,6 +22,7 @@ import { FootTrafficChartConfig } from "./Charts/FootTrafficChart";
 import { useGlobalFilters } from "../../store/globalFilters";
 // import { computeRange, toApiDate } from "../../utils/dateRange";
 import "react-datepicker/dist/react-datepicker.css";
+import { useCameras, CameraOption } from "../../hooks/useCameras";
 
 interface DashboardProps {
   token: string;
@@ -92,6 +93,16 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
 
   // Global filters
 	const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters();
+
+  // Load camera options based on global filters
+  const { cameras: cameraOptions } = useCameras({ department: gDept || undefined, store: gStore || undefined });
+  const [selectedCamera, setSelectedCamera] = useState<string>("");
+
+  // Reset local camera selection when global store changes
+  useEffect(() => {
+    setSelectedCamera("");
+    setFilters((prev) => ({ ...prev, camera: "" }));
+  }, [gDept, gStore]);
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -236,16 +247,6 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
     }
   };
 
-  // Real-time updates - refresh data every 30 seconds
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     fetchMetrics();
-  //     fetchChartData();
-  //   }, 30000); // 30 seconds
-
-  //   return () => clearInterval(interval);
-  // }, []);
-
   const fetchChartData = async () => {
     setChartLoading(true);
     try {
@@ -263,7 +264,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
       } = useGlobalFilters.getState();
       if (gDept) params.append("department", gDept);
       if (gStore) params.append("store", gStore);
-      if (filters.camera) params.append("camera", filters.camera);
+      if (selectedCamera) params.append("camera", selectedCamera);
 
       // Global date range overrides local
       if (gDate) {
@@ -290,10 +291,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
         // For different time periods, calculate end date
         switch (timePeriod) {
           case "day":
-            // Same day
             break;
-          case "week":
-            // Align with UI week display (Sun-Sat)
+          case "week": {
             const startOfWeek = new Date(selectedDate);
             startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay());
             startDate = startOfWeek;
@@ -302,17 +301,18 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
             // Update start_date param to the computed start of week
             params.set("start_date", formatDateForApi(startDate));
             break;
+          }
           case "month":
             endDate.setMonth(selectedDate.getMonth() + 1);
-            endDate.setDate(0); // Last day of the month
+            endDate.setDate(0);
             break;
-          case "quarter":
-            // Calculate proper quarter boundaries
+          case "quarter": {
             const quarter = Math.floor(selectedDate.getMonth() / 3);
             const startMonth = quarter * 3;
             const endMonth = startMonth + 2;
-            endDate = new Date(selectedDate.getFullYear(), endMonth + 1, 0); // Last day of the last month in quarter
+            endDate = new Date(selectedDate.getFullYear(), endMonth + 1, 0);
             break;
+          }
           case "year":
             endDate.setFullYear(selectedDate.getFullYear() + 1);
             endDate.setDate(0);
@@ -354,13 +354,11 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   useEffect(() => {
     fetchMetrics();
     fetchChartData();
-  }, [token, filters, gDept, gStore, gPeriod, gDate]);
+  }, [token, gDept, gStore, gPeriod, gDate]);
 
   useEffect(() => {
     fetchChartData();
-  }, [timePeriod, metricType, selectedDate, filters]);
-
-  // const renderKpiDateFilters = () => null;
+  }, [timePeriod, metricType, selectedDate, selectedCamera]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
@@ -495,6 +493,12 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                   onTimePeriodChange={setTimePeriod}
                   onMetricTypeChange={setMetricType}
                   onDateChange={setSelectedDate}
+                  cameraOptions={cameraOptions as CameraOption[]}
+                  selectedCamera={selectedCamera}
+                  onCameraChange={(val) => {
+                    setSelectedCamera(val);
+                    setFilters((prev) => ({ ...prev, camera: val }));
+                  }}
                 />
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-2 gap-8">

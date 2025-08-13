@@ -69,25 +69,36 @@ async def get_stores(
 
 @router.get("/filters/cameras")
 async def get_cameras(
-    division: Optional[str] = Query(None),
-    department: Optional[str] = Query(None),
-    store: Optional[str] = Query(None),
-    search: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+	division: Optional[str] = Query(None),
+	department: Optional[str] = Query(None),
+	store: Optional[str] = Query(None),
+	search: Optional[str] = Query(None),
+	db: Session = Depends(get_db)
 ):
-    try:
-        q = db.query(func.distinct(CameraEvent.camera_description)).filter(CameraEvent.camera_description.isnot(None))
-        if division:
-            q = q.filter(CameraEvent.division == division)
-        if department:
-            q = q.filter(CameraEvent.department == department)
-        if store:
-            q = q.filter(CameraEvent.camera_group == store)
-        if search:
-            like = f"{search}%"
-            q = q.filter(CameraEvent.camera_description.ilike(like))
-        q = q.order_by(CameraEvent.camera_description).limit(CAP)
-        items = [row[0] for row in q.all() if row[0]]
-        return {"items": items, "total": len(items)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+	try:
+		# Return camera along with its store (camera_group) so UI can label appropriately
+		q = db.query(CameraEvent.camera_description, CameraEvent.camera_group).filter(CameraEvent.camera_description.isnot(None))
+		if division:
+			q = q.filter(CameraEvent.division == division)
+		if department:
+			q = q.filter(CameraEvent.department == department)
+		if store:
+			q = q.filter(CameraEvent.camera_group == store)
+		if search:
+			like = f"{search}%"
+			q = q.filter(CameraEvent.camera_description.ilike(like))
+		q = q.distinct(CameraEvent.camera_description, CameraEvent.camera_group).order_by(CameraEvent.camera_description, CameraEvent.camera_group).limit(CAP)
+		rows = q.all()
+		# Deduplicate defensively
+		seen = set()
+		items = []
+		for cam_desc, cam_group in rows:
+			key = (cam_desc or "", cam_group or "")
+			if key in seen:
+				continue
+			seen.add(key)
+			if cam_desc:
+				items.append({"camera": cam_desc, "store": cam_group})
+		return {"items": items, "total": len(items)}
+	except Exception as e:
+		raise HTTPException(status_code=500, detail=str(e))
