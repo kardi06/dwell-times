@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from ...core.database import get_db
@@ -148,6 +148,7 @@ async def get_aggregated_dwell_time_analytics(
 @router.get("/dwell-time-time-series")
 async def get_dwell_time_time_series(
     view_type: str = Query("hourly", description="View type: hourly or daily"),
+    metric_type: str = Query("average", description="Metric type: average or total (minutes)"),
     department: Optional[str] = Query(None),
     store: Optional[str] = Query(None),
     camera: Optional[str] = Query(None),
@@ -155,10 +156,12 @@ async def get_dwell_time_time_series(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db)
 ):
-    """Average dwell time by hour (10-22) or by day of week, filtered by hierarchy and date range."""
+    """Dwell time series: average or total dwell minutes by hour (10-22) or by day of week, filtered by hierarchy and date range."""
     try:
         if view_type not in ["hourly", "daily"]:
             raise HTTPException(status_code=400, detail="Invalid view_type. Must be hourly or daily")
+        if metric_type not in ["average", "total"]:
+            raise HTTPException(status_code=400, detail="Invalid metric_type. Must be average or total")
 
         # Parse date range; default last 7 days if not provided
         now = datetime.now()
@@ -197,6 +200,7 @@ async def get_dwell_time_time_series(
                 extract('hour', CameraEvent.utc_time_started_readable).label('hour'),
                 func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
                 func.avg(CameraEvent.dwell_time).label('avg_dwell_time_sec'),
+                func.sum(CameraEvent.dwell_time).label('sum_dwell_time_sec'),
                 func.count(CameraEvent.id).label('event_count')
             ).filter(
                 func.lower(func.coalesce(CameraEvent.gender_outcome, 'other')).in_(['male','female'])
@@ -209,6 +213,7 @@ async def get_dwell_time_time_series(
                 func.extract('dow', CameraEvent.utc_time_started_readable).label('day_of_week'),
                 func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
                 func.avg(CameraEvent.dwell_time).label('avg_dwell_time_sec'),
+                func.sum(CameraEvent.dwell_time).label('sum_dwell_time_sec'),
                 func.count(CameraEvent.id).label('event_count')
             ).filter(
                 func.lower(func.coalesce(CameraEvent.gender_outcome, 'other')).in_(['male','female'])
@@ -226,24 +231,36 @@ async def get_dwell_time_time_series(
             for i, hour in enumerate(hours):
                 male_avg_sec = 0.0
                 female_avg_sec = 0.0
+                male_sum_sec = 0.0
+                female_sum_sec = 0.0
                 male_count = 0
                 female_count = 0
                 for r in rows:
                     if getattr(r, 'hour', None) == hour:
                         if r.gender == 'male':
-                            male_avg_sec = float(r.avg_dwell_time_sec or 0)
+                            male_avg_sec = float(getattr(r, 'avg_dwell_time_sec') or 0)
+                            male_sum_sec = float(getattr(r, 'sum_dwell_time_sec') or 0)
                             male_count = int(r.event_count or 0)
                         elif r.gender == 'female':
-                            female_avg_sec = float(r.avg_dwell_time_sec or 0)
+                            female_avg_sec = float(getattr(r, 'avg_dwell_time_sec') or 0)
+                            female_sum_sec = float(getattr(r, 'sum_dwell_time_sec') or 0)
                             female_count = int(r.event_count or 0)
-                total_count = male_count + female_count
-                total_avg_sec = (male_avg_sec * male_count + female_avg_sec * female_count) / total_count if total_count > 0 else 0.0
+                if metric_type == 'average':
+                    total_count = male_count + female_count
+                    total_val_sec = (male_avg_sec * male_count + female_avg_sec * female_count) / total_count if total_count > 0 else 0.0
+                    male_val_min = round(male_avg_sec / 60.0, 2)
+                    female_val_min = round(female_avg_sec / 60.0, 2)
+                    total_val_min = round(total_val_sec / 60.0, 2)
+                else:
+                    male_val_min = round(male_sum_sec / 60.0, 2)
+                    female_val_min = round(female_sum_sec / 60.0, 2)
+                    total_val_min = round((male_sum_sec + female_sum_sec) / 60.0, 2)
                 data.append({
                     'time_period': hour_labels[i],
-                    'male_avg_minutes': round(male_avg_sec / 60.0, 2),
-                    'female_avg_minutes': round(female_avg_sec / 60.0, 2),
-                    'total_avg_minutes': round(total_avg_sec / 60.0, 2),
-                    'sample_size': total_count,
+                    'male_avg_minutes': male_val_min,
+                    'female_avg_minutes': female_val_min,
+                    'total_avg_minutes': total_val_min,
+                    'sample_size': male_count + female_count,
                 })
         else:
             day_labels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -252,31 +269,44 @@ async def get_dwell_time_time_series(
             for i, expected_day in enumerate(expected_days):
                 male_avg_sec = 0.0
                 female_avg_sec = 0.0
+                male_sum_sec = 0.0
+                female_sum_sec = 0.0
                 male_count = 0
                 female_count = 0
                 for r in rows:
                     db_day = getattr(r, 'day_of_week', None)
                     if db_day in day_mapping and day_mapping[db_day] == expected_day:
                         if r.gender == 'male':
-                            male_avg_sec = float(r.avg_dwell_time_sec or 0)
+                            male_avg_sec = float(getattr(r, 'avg_dwell_time_sec') or 0)
+                            male_sum_sec = float(getattr(r, 'sum_dwell_time_sec') or 0)
                             male_count = int(r.event_count or 0)
                         elif r.gender == 'female':
-                            female_avg_sec = float(r.avg_dwell_time_sec or 0)
+                            female_avg_sec = float(getattr(r, 'avg_dwell_time_sec') or 0)
+                            female_sum_sec = float(getattr(r, 'sum_dwell_time_sec') or 0)
                             female_count = int(r.event_count or 0)
-                total_count = male_count + female_count
-                total_avg_sec = (male_avg_sec * male_count + female_avg_sec * female_count) / total_count if total_count > 0 else 0.0
+                if metric_type == 'average':
+                    total_count = male_count + female_count
+                    total_val_sec = (male_avg_sec * male_count + female_avg_sec * female_count) / total_count if total_count > 0 else 0.0
+                    male_val_min = round(male_avg_sec / 60.0, 2)
+                    female_val_min = round(female_avg_sec / 60.0, 2)
+                    total_val_min = round(total_val_sec / 60.0, 2)
+                else:
+                    male_val_min = round(male_sum_sec / 60.0, 2)
+                    female_val_min = round(female_sum_sec / 60.0, 2)
+                    total_val_min = round((male_sum_sec + female_sum_sec) / 60.0, 2)
                 data.append({
                     'time_period': day_labels[i],
-                    'male_avg_minutes': round(male_avg_sec / 60.0, 2),
-                    'female_avg_minutes': round(female_avg_sec / 60.0, 2),
-                    'total_avg_minutes': round(total_avg_sec / 60.0, 2),
-                    'sample_size': total_count,
+                    'male_avg_minutes': male_val_min,
+                    'female_avg_minutes': female_val_min,
+                    'total_avg_minutes': total_val_min,
+                    'sample_size': male_count + female_count,
                 })
 
         return {
             'data': data,
             'parameters': {
                 'view_type': view_type,
+                'metric_type': metric_type,
                 'start_date': start_dt.date().isoformat(),
                 'end_date': end_dt.date().isoformat(),
                 'department': department,

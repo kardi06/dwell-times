@@ -50,8 +50,8 @@ export const DwellTimeTimeChart: React.FC<Props> = ({ data, title = "Average Dwe
 			{
 				label: "Female",
 				data: data.map((d) => d.female_avg_minutes),
-				borderColor: "#ef4444",
-				backgroundColor: "#ef4444",
+				borderColor: "#FF69B4",
+				backgroundColor: "#FF69B4",
 				tension: 0.35,
 				fill: false,
 				pointRadius: 3,

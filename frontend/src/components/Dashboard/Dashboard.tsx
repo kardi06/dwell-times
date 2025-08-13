@@ -95,7 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
     setFilters((prev) => ({ ...prev, camera: "" }));
   }, [gDept, gStore]);
 
-  const { data: dwellTimeSeries, isLoading: dwellSeriesLoading } = useDwellTimeTimeSeries({ viewType: seriesViewType, camera: selectedCamera || undefined });
+  const { data: dwellTimeSeries, isLoading: dwellSeriesLoading } = useDwellTimeTimeSeries({ viewType: seriesViewType, metricType: metricType === 'average' ? 'average' : 'total', camera: selectedCamera || undefined });
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -517,8 +517,24 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                 </div>
                 <DwellTimeTimeChart data={dwellTimeSeries} isLoading={dwellSeriesLoading} viewType={seriesViewType} />
               </div>
+
+              <div className="space-y-4">
+                {/* <ChartFilters
+                  timePeriod={timePeriod}
+                  metricType={metricType}
+                  selectedDate={selectedDate}
+                  onTimePeriodChange={setTimePeriod}
+                  onMetricTypeChange={setMetricType}
+                  onDateChange={setSelectedDate}
+                  cameraOptions={cameraOptions as CameraOption[]}
+                  selectedCamera={selectedCamera}
+                  onCameraChange={(val) => {
+                    setSelectedCamera(val);
+                    setFilters((prev) => ({ ...prev, camera: val }));
+                  }}
+                /> */}
+              </div>
               <div className="grid grid-cols-2 lg:grid-cols-2 gap-8">
-                {/* Bar Chart */}
                 <div className="bg-white rounded-lg p-4 shadow-sm">
                   <DwellTimeBarChart
                     data={chartData}

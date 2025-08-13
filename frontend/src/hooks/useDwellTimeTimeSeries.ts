@@ -3,6 +3,7 @@ import { useGlobalFilters } from "../store/globalFilters";
 import { computeRange, toApiDate } from "../utils/dateRange";
 
 export type DwellViewType = "hourly" | "daily";
+export type DwellMetricType = "average" | "total";
 
 export interface DwellTimeSeriesPoint {
 	time_period: string;
@@ -14,10 +15,11 @@ export interface DwellTimeSeriesPoint {
 
 interface Params {
 	viewType: DwellViewType;
+	metricType: DwellMetricType;
 	camera?: string;
 }
 
-export function useDwellTimeTimeSeries({ viewType, camera }: Params) {
+export function useDwellTimeTimeSeries({ viewType, metricType, camera }: Params) {
 	const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters();
 	const [data, setData] = useState<DwellTimeSeriesPoint[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
@@ -31,6 +33,7 @@ export function useDwellTimeTimeSeries({ viewType, camera }: Params) {
 				const { start, end } = computeRange(gPeriod, gDate || new Date());
 				const params = new URLSearchParams();
 				params.append("view_type", viewType);
+				params.append("metric_type", metricType);
 				params.append("start_date", toApiDate(start));
 				params.append("end_date", toApiDate(end));
 				if (gDept) params.append("department", gDept);
@@ -48,7 +51,7 @@ export function useDwellTimeTimeSeries({ viewType, camera }: Params) {
 			}
 		};
 		fetchData();
-	}, [viewType, camera, gDept, gStore, gPeriod, gDate]);
+	}, [viewType, metricType, camera, gDept, gStore, gPeriod, gDate]);
 
 	return { data, isLoading, error };
 }
