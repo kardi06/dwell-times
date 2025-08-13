@@ -17,7 +17,10 @@ class AnalyticsService:
         self.db = db
     
     def calculate_kpi_metrics(self, start_date: Optional[datetime] = None,
-                            end_date: Optional[datetime] = None) -> Dict:
+                            end_date: Optional[datetime] = None,
+                            department: Optional[str] = None,
+                            store: Optional[str] = None,
+                            camera: Optional[str] = None) -> Dict:
         """Calculate real-time KPI metrics"""
         logger.info("Calculating KPI metrics...")
         
@@ -28,6 +31,12 @@ class AnalyticsService:
                 base_query = base_query.filter(CameraEvent.created_at >= start_date)
             if end_date:
                 base_query = base_query.filter(CameraEvent.created_at <= end_date)
+            if department:
+                base_query = base_query.filter(CameraEvent.department == department)
+            if store:
+                base_query = base_query.filter(CameraEvent.camera_group == store)
+            if camera:
+                base_query = base_query.filter(CameraEvent.camera_description == camera)
             
             # Total unique visitors
             unique_visitors = base_query.with_entities(
@@ -48,6 +57,9 @@ class AnalyticsService:
                 session_query = session_query.filter(PersonSession.entry_time >= start_date)
             if end_date:
                 session_query = session_query.filter(PersonSession.exit_time <= end_date)
+            # Apply camera constraint to sessions if provided (no group/department available on PersonSession)
+            if camera:
+                session_query = session_query.filter(PersonSession.camera_id == camera)
             
             sessions = session_query.all()
             

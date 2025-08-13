@@ -55,6 +55,14 @@ async def get_chart_data(
 
         # Build base query
         query = db.query(CameraEvent)
+
+        # Apply global hierarchy filters
+        if department:
+            query = query.filter(CameraEvent.department == department)
+        if store:
+            query = query.filter(CameraEvent.camera_group == store)
+        if camera:
+            query = query.filter(CameraEvent.camera_description == camera)
         
         # Apply date filters
         if start_dt:
@@ -148,6 +156,8 @@ async def get_foot_traffic_data(
     department: Optional[str] = Query(None),
     store: Optional[str] = Query(None),
     camera: Optional[str] = Query(None),
+    start_date: Optional[str] = Query(None, description="Global start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="Global end date (YYYY-MM-DD)"),
     db: Session = Depends(get_db)
 ):
     """Get foot traffic analytics data for chart visualization"""
@@ -164,6 +174,21 @@ async def get_foot_traffic_data(
             selected_dt = datetime.fromisoformat(selected_date)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid selected_date format. Use YYYY-MM-DD")
+
+        # Parse global date range if provided
+        start_dt_override = None
+        end_dt_override = None
+        if start_date:
+            try:
+                start_dt_override = datetime.fromisoformat(start_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+        if end_date:
+            try:
+                end_dt_override = datetime.fromisoformat(end_date)
+                end_dt_override = end_dt_override.replace(hour=23, minute=59, second=59, microsecond=999999)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
         
         # Build base query
         query = db.query(CameraEvent)
@@ -183,38 +208,38 @@ async def get_foot_traffic_data(
         if camera_filter != "all":
             query = query.filter(CameraEvent.camera_description == camera_filter)
         
-        # Apply date filtering based on time period
-        if time_period == "day":
-            # Filter for the specific day
-            start_dt = selected_dt.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_dt = selected_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-            query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
-            query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
-        elif time_period == "weekly":
-            # Filter for the week containing the selected date
-            start_of_week = selected_dt - timedelta(days=selected_dt.weekday())
-            start_dt = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
-            end_dt = start_of_week + timedelta(days=6)
-            end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-            query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
-            query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
-        elif time_period == "monthly":
-            # Filter for the month containing the selected date
-            start_dt = selected_dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-            if selected_dt.month == 12:
-                end_dt = selected_dt.replace(year=selected_dt.year + 1, month=1, day=1) - timedelta(days=1)
-            else:
-                end_dt = selected_dt.replace(month=selected_dt.month + 1, day=1) - timedelta(days=1)
-            end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
-            query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
-            query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
-        elif time_period == "yearly":
-            # Filter for the year containing the selected date
-            start_dt = selected_dt.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-            end_dt = selected_dt.replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=999999)
-            query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
-            query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
-        
+        # Apply date filtering
+        if start_dt_override and end_dt_override:
+            query = query.filter(CameraEvent.utc_time_started_readable >= start_dt_override)
+            query = query.filter(CameraEvent.utc_time_started_readable <= end_dt_override)
+        else:
+            if time_period == "day":
+                start_dt = selected_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_dt = selected_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+                query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
+            elif time_period == "weekly":
+                start_of_week = selected_dt - timedelta(days=selected_dt.weekday())
+                start_dt = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_dt = start_of_week + timedelta(days=6)
+                end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+                query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
+            elif time_period == "monthly":
+                start_dt = selected_dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                if selected_dt.month == 12:
+                    end_dt = selected_dt.replace(year=selected_dt.year + 1, month=1, day=1) - timedelta(days=1)
+                else:
+                    end_dt = selected_dt.replace(month=selected_dt.month + 1, day=1) - timedelta(days=1)
+                end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+                query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
+            elif time_period == "yearly":
+                start_dt = selected_dt.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+                end_dt = selected_dt.replace(month=12, day=31, hour=23, minute=59, second=59, microsecond=999999)
+                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+                query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
+
         # Build aggregation query based on view type
         if view_type == "hourly":
             # Hourly view: 10 AM to 10 PM (hours 10-22)

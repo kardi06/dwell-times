@@ -44,6 +44,18 @@ export const useFootTrafficData = (config: FootTrafficChartConfig): UseFootTraff
 
       // const response = await fetch(`http://localhost:8000/api/v1/analytics/
       //   foot-traffic-data?${params}`);
+      // Append global filters
+      const { useGlobalFilters } = await import('../store/globalFilters');
+      const { computeRange, toApiDate } = await import('../utils/dateRange');
+      const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters.getState();
+      if (gDept) params.append('department', gDept);
+      if (gStore) params.append('store', gStore);
+      if (gDate) {
+        const { start, end } = computeRange(gPeriod, gDate);
+        params.append('start_date', toApiDate(start));
+        params.append('end_date', toApiDate(end));
+      }
+
       const response = await fetch(`/api/v1/analytics/foot-traffic-data?${params}`);
       
       if (!response.ok) {

@@ -51,7 +51,7 @@ async def get_kpi_metrics(
         
         # Get analytics
         analytics_service = AnalyticsService(db)
-        metrics = analytics_service.calculate_kpi_metrics(start_dt, end_dt)
+        metrics = analytics_service.calculate_kpi_metrics(start_dt, end_dt, department=department, store=store, camera=camera)
         
         return {
             "kpi_metrics": metrics,

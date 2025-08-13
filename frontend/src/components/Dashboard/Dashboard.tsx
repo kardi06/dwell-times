@@ -14,6 +14,7 @@ import { CircleUserRound, FileVideoCamera, History, Clock } from 'lucide-react';
 import { FootTrafficChartConfig } from './Charts/FootTrafficChart';
 // import { FootTrafficFilters } from './Charts/FootTrafficFilters';
 import DatePicker from 'react-datepicker';
+import { useGlobalFilters } from '../../store/globalFilters';
 import 'react-datepicker/dist/react-datepicker.css';
 
 interface DashboardProps {
@@ -84,17 +85,21 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
     setError('');
     
     try {
-      // Build KPI params if dates selected
-      const kpiParams = new URLSearchParams();
-      if (kpiStartDate) kpiParams.append('start_date', formatDateForApi(kpiStartDate));
-      if (kpiEndDate) kpiParams.append('end_date', formatDateForApi(kpiEndDate));
+             // Build KPI params from Global Filters
+       const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters.getState();
+       const kpiParams = new URLSearchParams();
+       if (gDate) {
+         const { computeRange } = await import('../../utils/dateRange');
+         const { toApiDate } = await import('../../utils/dateRange');
+         const { start, end } = computeRange(gPeriod, gDate);
+         kpiParams.append('start_date', toApiDate(start));
+         kpiParams.append('end_date', toApiDate(end));
+       }
+       if (gDept) kpiParams.append('department', gDept);
+       if (gStore) kpiParams.append('store', gStore);
+       if (filters.camera) kpiParams.append('camera', filters.camera);
 
-      // Fetch basic KPI metrics
-      // Append hierarchy filters
-      
-      if (filters.department) kpiParams.append('department', filters.department);
-      if (filters.store) kpiParams.append('store', filters.store);
-      if (filters.camera) kpiParams.append('camera', filters.camera);
+       // Fetch basic KPI metrics
 
       
       // const kpiResponse = await fetch(`http://localhost:8000/api/v1/
@@ -178,14 +183,19 @@ const [filters, setFilters] = useState<{ department: string; store: string; came
         time_period: timePeriod,
         metric_type: metricType
       });
-      // Append hierarchy filters to chart data
-      
-      if (filters.department) params.append('department', filters.department);
-      if (filters.store) params.append('store', filters.store);
+      // Append global filters
+      const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters.getState();
+      if (gDept) params.append('department', gDept);
+      if (gStore) params.append('store', gStore);
       if (filters.camera) params.append('camera', filters.camera);
 
-      // Add date parameters if selected
-      if (selectedDate) {
+      // Global date range overrides local
+      if (gDate) {
+        const { computeRange, toApiDate } = await import('../../utils/dateRange');
+        const { start, end } = computeRange(gPeriod, gDate);
+        params.append('start_date', toApiDate(start));
+        params.append('end_date', toApiDate(end));
+      } else if (selectedDate) {
         let startDate = selectedDate;
         let endDate = new Date(selectedDate);
         
