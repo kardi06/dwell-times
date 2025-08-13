@@ -50,4 +50,5 @@ export { ChartFilters } from './ChartFilters';
 export { FootTrafficChart } from './FootTrafficChart';
 export { FootTrafficFilters } from './FootTrafficFilters';
 export { WaitingTimeChart } from './WaitingTimeChart';
-export { WaitingTimeFilters } from './WaitingTimeFilters'; 
+export { WaitingTimeFilters } from './WaitingTimeFilters';
+export { DwellTimeTimeChart } from './DwellTimeTimeChart'; 

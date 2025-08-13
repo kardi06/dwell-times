@@ -6,7 +6,7 @@ import {
   // Loading 
 } from "../ui";
 // import EventTable from './EventTable';
-import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters } from "./Charts";
+import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters, DwellTimeTimeChart } from "./Charts";
 import { ChartDataPoint } from "./Charts/DwellTimeBarChart";
 import { TimePeriod, MetricType } from "./Charts/ChartFilters";
 import { FootTrafficAnalytics } from "./FootTrafficAnalytics";
@@ -23,6 +23,7 @@ import { useGlobalFilters } from "../../store/globalFilters";
 // import { computeRange, toApiDate } from "../../utils/dateRange";
 import "react-datepicker/dist/react-datepicker.css";
 import { useCameras, CameraOption } from "../../hooks/useCameras";
+import { useDwellTimeTimeSeries } from "../../hooks/useDwellTimeTimeSeries";
 
 interface DashboardProps {
   token: string;
@@ -66,23 +67,13 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // KPI date range state
-  // const [kpiStartDate, setKpiStartDate] = useState<Date | null>(null);
-  // const [kpiEndDate, setKpiEndDate] = useState<Date | null>(null);
-
-  // Chart state
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
   const [metricType, setMetricType] = useState<MetricType>("average");
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
-  // const [config, setConfig] = useState<FootTrafficChartConfig>({
-  //   timePeriod: "weekly",
-  //   selectedDate: new Date(),
-  //   cameraFilter: "all",
-  //   viewType: "daily",
-  // });
+  const [seriesViewType, setSeriesViewType] = useState<"hourly" | "daily">("hourly");
 
   const formatDateForApi = (date: Date) => {
     const y = date.getFullYear();
@@ -103,6 +94,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
     setSelectedCamera("");
     setFilters((prev) => ({ ...prev, camera: "" }));
   }, [gDept, gStore]);
+
+  const { data: dwellTimeSeries, isLoading: dwellSeriesLoading } = useDwellTimeTimeSeries({ viewType: seriesViewType, camera: selectedCamera || undefined });
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -247,6 +240,16 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
     }
   };
 
+  // Real-time updates - refresh data every 30 seconds
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     fetchMetrics();
+  //     fetchChartData();
+  //   }, 30000); // 30 seconds
+
+  //   return () => clearInterval(interval);
+  // }, []);
+
   const fetchChartData = async () => {
     setChartLoading(true);
     try {
@@ -298,7 +301,6 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
             startDate = startOfWeek;
             endDate = new Date(startOfWeek);
             endDate.setDate(startOfWeek.getDate() + 6);
-            // Update start_date param to the computed start of week
             params.set("start_date", formatDateForApi(startDate));
             break;
           }
@@ -359,6 +361,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   useEffect(() => {
     fetchChartData();
   }, [timePeriod, metricType, selectedDate, selectedCamera]);
+
+  // const renderKpiDateFilters = () => null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
@@ -474,17 +478,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                     Visitor engagement patterns over time
                   </p>
                 </div>
-                {/* <div className="flex items-center space-x-2">
-                  <ChartFilters
-                    timePeriod={timePeriod}
-                    metricType={metricType}
-                    selectedDate={selectedDate}
-                    onTimePeriodChange={setTimePeriod}
-                    onMetricTypeChange={setMetricType}
-                    onDateChange={setSelectedDate}
-                  />
-                </div> */}
               </div>
+
               <div className="space-y-4">
                 <ChartFilters
                   timePeriod={timePeriod}
@@ -500,6 +495,27 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                     setFilters((prev) => ({ ...prev, camera: val }));
                   }}
                 />
+              </div>
+              {/* New: Time Series (Avg Dwell by Hour/Day) */}
+              <div className="mb-6 bg-white rounded-lg p-4 shadow-sm border">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-md font-semibold text-gray-800">Average Dwell Time</h4>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className={`px-3 py-1 rounded ${seriesViewType === 'hourly' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      onClick={() => setSeriesViewType('hourly')}
+                    >
+                      Hourly
+                    </button>
+                    <button
+                      className={`px-3 py-1 rounded ${seriesViewType === 'daily' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+                      onClick={() => setSeriesViewType('daily')}
+                    >
+                      Daily
+                    </button>
+                  </div>
+                </div>
+                <DwellTimeTimeChart data={dwellTimeSeries} isLoading={dwellSeriesLoading} viewType={seriesViewType} />
               </div>
               <div className="grid grid-cols-2 lg:grid-cols-2 gap-8">
                 {/* Bar Chart */}
