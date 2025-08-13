@@ -47,7 +47,7 @@ interface KPIMetrics {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ token }) => {
-  const [filters, setFilters] = useState({ division: '', department: '', store: '', camera: '' });
+  const [filters, setFilters] = useState<{ department: string; store: string; camera: string }>({ department: '', store: '', camera: '' });
   const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -89,7 +89,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
 
       // Fetch basic KPI metrics
       // Append hierarchy filters
-      if (filters.division) kpiParams.append('division', filters.division);
+      
       if (filters.department) kpiParams.append('department', filters.department);
       if (filters.store) kpiParams.append('store', filters.store);
       if (filters.camera) kpiParams.append('camera', filters.camera);
@@ -177,7 +177,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
         metric_type: metricType
       });
       // Append hierarchy filters to chart data
-      if (filters.division) params.append('division', filters.division);
+      
       if (filters.department) params.append('department', filters.department);
       if (filters.store) params.append('store', filters.store);
       if (filters.camera) params.append('camera', filters.camera);
@@ -327,7 +327,6 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
         {/* Filters: Division→Department→Store→Camera */}
         <div className="mb-6">
           <HierarchyFilters
-            division={filters.division}
             department={filters.department}
             store={filters.store}
             camera={filters.camera}

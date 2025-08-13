@@ -28,7 +28,7 @@ async def get_divisions(
 
 @router.get("/filters/departments")
 async def get_departments(
-    division: Optional[str] = Query(None),
+    division: Optional[str] = Query(None),  # kept for compatibility but not required by UI
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):

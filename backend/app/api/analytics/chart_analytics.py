@@ -169,6 +169,7 @@ async def get_foot_traffic_data(
         query = db.query(CameraEvent)
         
         # Apply hierarchy filters
+        # Division filter intentionally not required by UI now; still supported if provided
         if division:
             query = query.filter(CameraEvent.division == division)
         if department:
