@@ -42,7 +42,9 @@ export const useFootTrafficData = (config: FootTrafficChartConfig): UseFootTraff
         view_type: config.viewType
       });
 
-      const response = await fetch(`http://localhost:8000/api/v1/analytics/foot-traffic-data?${params}`);
+      // const response = await fetch(`http://localhost:8000/api/v1/analytics/
+      //   foot-traffic-data?${params}`);
+      const response = await fetch(`/api/v1/analytics/foot-traffic-data?${params}`);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

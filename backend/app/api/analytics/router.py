@@ -15,6 +15,7 @@ from .event_analytics import router as event_router
 from .demographic_analytics import router as demographic_router
 from .chart_analytics import router as chart_router
 from .camera_analytics import router as camera_router
+from .filter_analytics import router as filter_router
 from .waiting_time_analytics import router as waiting_time_router
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
@@ -28,4 +29,5 @@ router.include_router(event_router)
 router.include_router(demographic_router)
 router.include_router(chart_router)
 router.include_router(camera_router)
+router.include_router(filter_router)
 router.include_router(waiting_time_router) 

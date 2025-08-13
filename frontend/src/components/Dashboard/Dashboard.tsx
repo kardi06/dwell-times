@@ -5,6 +5,7 @@ import { DwellTimeBarChart, DwellTimeLineChart, ChartFilters } from './Charts';
 import { ChartDataPoint } from './Charts/DwellTimeBarChart';
 import { TimePeriod, MetricType } from './Charts/ChartFilters';
 import { FootTrafficAnalytics } from './FootTrafficAnalytics';
+import { HierarchyFilters } from './HierarchyFilters';
 import { WaitingTimeAnalytics } from './WaitingTimeAnalytics';
 import MetricCard from './MetricCard';
 import { CircleUserRound, FileVideoCamera, History, Clock } from 'lucide-react';
@@ -46,6 +47,7 @@ interface KPIMetrics {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ token }) => {
+  const [filters, setFilters] = useState({ division: '', department: '', store: '', camera: '' });
   const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,7 +88,16 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
       if (kpiEndDate) kpiParams.append('end_date', formatDateForApi(kpiEndDate));
 
       // Fetch basic KPI metrics
-      const kpiResponse = await fetch(`http://localhost:8000/api/v1/analytics/kpi-metrics?${kpiParams.toString()}`, {
+      // Append hierarchy filters
+      if (filters.division) kpiParams.append('division', filters.division);
+      if (filters.department) kpiParams.append('department', filters.department);
+      if (filters.store) kpiParams.append('store', filters.store);
+      if (filters.camera) kpiParams.append('camera', filters.camera);
+
+      
+      // const kpiResponse = await fetch(`http://localhost:8000/api/v1/
+      //   analytics/kpi-metrics?${kpiParams.toString()}`, {
+      const kpiResponse = await fetch(`/api/v1/analytics/kpi-metrics?${kpiParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -165,6 +176,11 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
         time_period: timePeriod,
         metric_type: metricType
       });
+      // Append hierarchy filters to chart data
+      if (filters.division) params.append('division', filters.division);
+      if (filters.department) params.append('department', filters.department);
+      if (filters.store) params.append('store', filters.store);
+      if (filters.camera) params.append('camera', filters.camera);
 
       // Add date parameters if selected
       if (selectedDate) {
@@ -240,11 +256,11 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   useEffect(() => {
     fetchMetrics();
     fetchChartData();
-  }, [token]);
+  }, [token, filters]);
 
   useEffect(() => {
     fetchChartData();
-  }, [timePeriod, metricType, selectedDate]);
+  }, [timePeriod, metricType, selectedDate, filters]);
 
   const renderKpiDateFilters = () => (
     <div className="flex items-end gap-3">
@@ -307,6 +323,17 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
             {error}
           </Alert>
         )}
+
+        {/* Filters: Division→Department→Store→Camera */}
+        <div className="mb-6">
+          <HierarchyFilters
+            division={filters.division}
+            department={filters.department}
+            store={filters.store}
+            camera={filters.camera}
+            onChange={(vals)=>setFilters(vals)}
+          />
+        </div>
 
         {/* Metrics Cards Section */}
         <section className="mb-8">

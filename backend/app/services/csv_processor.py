@@ -20,14 +20,80 @@ class CSVProcessor:
         'timestamp', 'utc_time_re', 'utc_time_st', 'utc_time_e', 'frame_time',
         'utc_time_received', 'utc_time_start', 'utc_time_end',
         'utc_time_recorded', 'utc_time_s', 'frame_time',
-        'utc_time_started_readable', 'utc_time_ended_readable'
+        'utc_time_started_readable', 'utc_time_ended_readable',
+        # alternates used by some feeds
+        'utcconvert_time_started', 'utcconvert_time_ended'
     ]
     
     # Demographic columns for story 1.6
     DEMOGRAPHIC_COLUMNS = ['age_group_outcome', 'gender_outcome']
+
+    # Story 1.12 - alias mapping for camera metadata
+    COLUMN_ALIASES: Dict[str, str] = {
+        'camera_group_data_group_name': 'camera_group',
+        'camera_group_data_group_departemen': 'department',
+        'camera_group_data_group_divisi': 'division',
+    }
     
     def __init__(self, db: Session):
         self.db = db
+
+    def _normalize_optional_text(self, value: Optional[object], max_len: int, field_name: str, trunc_counters: Dict[str, int]) -> Optional[str]:
+        if value is None:
+            return None
+        text = str(value).strip()
+        if text == '':
+            return None
+        if len(text) > max_len:
+            trunc_counters[field_name] = trunc_counters.get(field_name, 0) + 1
+            text = text[:max_len]
+        return text
+
+    def _apply_aliases_and_collect_stats(
+        self,
+        df: pd.DataFrame,
+        counts: Dict[str, int],
+        trunc_counters: Dict[str, int],
+        warnings: List[str]
+    ) -> pd.DataFrame:
+        """Map alias columns to target fields with normalization and collect stats."""
+        # Initialize targets if not present
+        for target in ['camera_group', 'department', 'division']:
+            if target not in df.columns:
+                df[target] = None
+        
+        # Track unknown/similar headers (non-blocking)
+        similar_prefix = 'camera_group_data_group'
+        for col in df.columns:
+            if col.startswith(similar_prefix) and col not in self.COLUMN_ALIASES:
+                msg = f"Unknown header '{col}' ignored"
+                if msg not in warnings:
+                    warnings.append(msg)
+        
+        # Apply aliases
+        for source, target in self.COLUMN_ALIASES.items():
+            if source in df.columns:
+                # Normalize column values
+                series = df[source].astype('string')
+                # strip whitespace, convert <NA> to None later
+                series = series.str.strip()
+                # Count truncations via vectorized mask
+                over_mask = series.fillna('').str.len() > 100
+                num_trunc = int(over_mask.sum())
+                if num_trunc:
+                    trunc_counters[target] = trunc_counters.get(target, 0) + num_trunc
+                # truncate and set empty to None
+                series = series.where(~over_mask, series.str.slice(0, 100))
+                series = series.replace({'': None, 'None': None, 'nan': None})
+                # Write into target only when present
+                # Prefer existing target if already populated; else take alias
+                df[target] = df[target].where(df[target].notna(), series)
+        
+        # Update populated counts
+        for target in ['camera_group', 'department', 'division']:
+            counts[target] = counts.get(target, 0) + int(df[target].notna().sum())
+        
+        return df
     
     def validate_csv_structure(self, df: pd.DataFrame) -> Tuple[bool, List[str]]:
         """Validate CSV structure and required columns"""
@@ -36,8 +102,14 @@ class CSVProcessor:
         # Debug: Log available columns
         logger.info(f"Available columns in CSV: {list(df.columns)}")
         
-        # Check required columns
-        missing_columns = set(self.REQUIRED_COLUMNS) - set(df.columns)
+        # Check required columns (allow alternates for utc_*_readable)
+        required = set(self.REQUIRED_COLUMNS)
+        # If alternates exist, temporarily consider them fulfilling required
+        if 'utc_time_started_readable' not in df.columns and 'utcconvert_time_started' in df.columns:
+            required.discard('utc_time_started_readable')
+        if 'utc_time_ended_readable' not in df.columns and 'utcconvert_time_ended' in df.columns:
+            required.discard('utc_time_ended_readable')
+        missing_columns = required - set(df.columns)
         if missing_columns:
             errors.append(f"Missing required columns: {missing_columns}")
         
@@ -221,6 +293,11 @@ class CSVProcessor:
             processed_rows = 0
             errors = []
             
+            # Ingestion stats for story 1.12
+            counts = {'camera_group': 0, 'department': 0, 'division': 0}
+            trunc_counters: Dict[str, int] = {}
+            warnings: List[str] = []
+            
             # First pass: validate structure and count rows
             logger.info("Validating CSV structure...")
             first_chunk = next(pd.read_csv(file_path, chunksize=chunk_size))
@@ -237,11 +314,20 @@ class CSVProcessor:
             logger.info("Processing CSV data...")
             for chunk_num, chunk in enumerate(pd.read_csv(file_path, chunksize=chunk_size)):
                 try:
+                    # Map alternates for required timestamps if necessary
+                    if 'utc_time_started_readable' not in chunk.columns and 'utcconvert_time_started' in chunk.columns:
+                        chunk['utc_time_started_readable'] = chunk['utcconvert_time_started']
+                    if 'utc_time_ended_readable' not in chunk.columns and 'utcconvert_time_ended' in chunk.columns:
+                        chunk['utc_time_ended_readable'] = chunk['utcconvert_time_ended']
+
                     # Validate data quality
                     is_valid, quality_errors = self.validate_data_quality(chunk)
                     if quality_errors:
                         errors.extend(quality_errors)
                         logger.warning(f"Data quality issues in chunk {chunk_num}: {quality_errors}")
+                    
+                    # Apply alias mapping + normalization and collect stats
+                    chunk = self._apply_aliases_and_collect_stats(chunk, counts, trunc_counters, warnings)
                     
                     # Parse timestamps
                     chunk = self.parse_timestamps(chunk)
@@ -261,13 +347,24 @@ class CSVProcessor:
             
             # Calculate processing statistics
             success_rate = (processed_rows / total_rows * 100) if total_rows > 0 else 0
+
+            # Build warnings summary for truncations
+            for field, num in trunc_counters.items():
+                if num > 0:
+                    warnings.append(f"{field} value truncated on {num} rows")
             
             result = {
                 'total_rows': total_rows,
                 'processed_rows': processed_rows,
                 'success_rate': success_rate,
                 'errors': errors,
-                'file_path': file_path
+                'file_path': file_path,
+                'ingestionSummary': {
+                    'camera_group_populated': counts.get('camera_group', 0),
+                    'department_populated': counts.get('department', 0),
+                    'division_populated': counts.get('division', 0),
+                },
+                'warnings': warnings,
             }
             
             logger.info(f"CSV processing completed: {processed_rows}/{total_rows} rows processed ({success_rate:.1f}% success rate)")
@@ -300,10 +397,6 @@ class CSVProcessor:
                 utc_time_recorded_readable=row.get('utc_time_recorded_readable'),
                 utc_time_started_readable=row.get('utc_time_started_readable'),
                 utc_time_ended_readable=row.get('utc_time_ended_readable'),
-                # appearance_utc_time_s=row.get('appearance_utc_time_s'),
-                # utc_time_s=row.get('utc_time_s'),
-                # utc_time_e=row.get('utc_time_e'),
-                # utc_time_e_first_frame_last=row.get('utc_time_e_first_frame_last'),
                 
                 # Frame information
                 first_frame=row.get('first_frame'),
@@ -312,7 +405,9 @@ class CSVProcessor:
                 # Camera information
                 camera_id=str(row.get('camera_id', '')),
                 camera_de_node_id=row.get('camera_de_node_id'),
-                camera_group=row.get('camera_group_name'),
+                camera_group=row.get('camera_group'),
+                department=row.get('department'),
+                division=row.get('division'),
                 camera_description=row.get('camera_description'),
                 
                 # Analysis fields

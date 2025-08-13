@@ -25,6 +25,10 @@ router = APIRouter()
 async def get_kpi_metrics(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    division: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
+    store: Optional[str] = Query(None),
+    camera: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """Get KPI metrics for the specified date range"""

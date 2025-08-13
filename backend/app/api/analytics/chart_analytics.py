@@ -27,6 +27,10 @@ async def get_chart_data(
     metric_type: str = Query("average", description="Metric type: total, average"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    division: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
+    store: Optional[str] = Query(None),
+    camera: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """Get chart data for dwell time analytics with demographic breakdowns"""
@@ -140,6 +144,10 @@ async def get_foot_traffic_data(
     selected_date: str = Query(..., description="Selected date (YYYY-MM-DD)"),
     camera_filter: str = Query("all", description="Camera filter or 'all'"),
     view_type: str = Query("hourly", description="View type: hourly, daily"),
+    division: Optional[str] = Query(None),
+    department: Optional[str] = Query(None),
+    store: Optional[str] = Query(None),
+    camera: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     """Get foot traffic analytics data for chart visualization"""
@@ -160,7 +168,17 @@ async def get_foot_traffic_data(
         # Build base query
         query = db.query(CameraEvent)
         
-        # Apply camera filter
+        # Apply hierarchy filters
+        if division:
+            query = query.filter(CameraEvent.division == division)
+        if department:
+            query = query.filter(CameraEvent.department == department)
+        if store:
+            query = query.filter(CameraEvent.camera_group == store)
+        if camera:
+            query = query.filter(CameraEvent.camera_description == camera)
+        
+        # Apply camera filter (legacy)
         if camera_filter != "all":
             query = query.filter(CameraEvent.camera_description == camera_filter)
         

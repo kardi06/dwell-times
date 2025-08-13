@@ -17,7 +17,9 @@ export const useCameras = (): UseCamerasReturn => {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/v1/analytics/cameras');
+      // const response = await fetch('http://localhost:8000/api/v1/analytics/
+      // cameras');
+      const response = await fetch('/api/v1/analytics/cameras');
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
