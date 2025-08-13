@@ -4,22 +4,29 @@ import { computeRange, toApiDate } from "../utils/dateRange";
 
 export type DwellViewType = "hourly" | "daily";
 export type DwellMetricType = "average" | "total";
+export type DwellBreakdown = "none" | "gender" | "age" | "gender_age";
 
 export interface DwellTimeSeriesPoint {
 	time_period: string;
-	male_avg_minutes: number;
-	female_avg_minutes: number;
-	total_avg_minutes: number;
-	sample_size: number;
+	male_avg_minutes?: number; // kept for backward compat
+	female_avg_minutes?: number;
+	total_avg_minutes?: number;
+	sample_size?: number;
+	male_minutes?: number;
+	female_minutes?: number;
+	total_minutes?: number;
+	age_groups?: { age_group: string; minutes: number }[];
+	gender_age?: { male: { age_group: string; minutes: number }[]; female: { age_group: string; minutes: number }[] };
 }
 
 interface Params {
 	viewType: DwellViewType;
 	metricType: DwellMetricType;
+	breakdown: DwellBreakdown;
 	camera?: string;
 }
 
-export function useDwellTimeTimeSeries({ viewType, metricType, camera }: Params) {
+export function useDwellTimeTimeSeries({ viewType, metricType, breakdown, camera }: Params) {
 	const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters();
 	const [data, setData] = useState<DwellTimeSeriesPoint[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +41,7 @@ export function useDwellTimeTimeSeries({ viewType, metricType, camera }: Params)
 				const params = new URLSearchParams();
 				params.append("view_type", viewType);
 				params.append("metric_type", metricType);
+				params.append("breakdown", breakdown);
 				params.append("start_date", toApiDate(start));
 				params.append("end_date", toApiDate(end));
 				if (gDept) params.append("department", gDept);
@@ -51,7 +59,7 @@ export function useDwellTimeTimeSeries({ viewType, metricType, camera }: Params)
 			}
 		};
 		fetchData();
-	}, [viewType, metricType, camera, gDept, gStore, gPeriod, gDate]);
+	}, [viewType, metricType, breakdown, camera, gDept, gStore, gPeriod, gDate]);
 
 	return { data, isLoading, error };
 }

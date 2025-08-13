@@ -74,6 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
 
   const [seriesViewType, setSeriesViewType] = useState<"hourly" | "daily">("hourly");
+  const [seriesBreakdown, setSeriesBreakdown] = useState<"none" | "gender" | "age" | "gender_age">("none");
 
   const formatDateForApi = (date: Date) => {
     const y = date.getFullYear();
@@ -95,7 +96,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
     setFilters((prev) => ({ ...prev, camera: "" }));
   }, [gDept, gStore]);
 
-  const { data: dwellTimeSeries, isLoading: dwellSeriesLoading } = useDwellTimeTimeSeries({ viewType: seriesViewType, metricType: metricType === 'average' ? 'average' : 'total', camera: selectedCamera || undefined });
+  const { data: dwellTimeSeries, isLoading: dwellSeriesLoading } = useDwellTimeTimeSeries({ viewType: seriesViewType, metricType: metricType === 'average' ? 'average' : 'total', breakdown: seriesBreakdown, camera: selectedCamera || undefined });
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -498,7 +499,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
               </div>
               {/* New: Time Series (Avg Dwell by Hour/Day) */}
               <div className="mb-6 bg-white rounded-lg p-4 shadow-sm border">
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex flex-wrap items-center justify-between mb-3 gap-2">
                   <h4 className="text-md font-semibold text-gray-800">Average Dwell Time</h4>
                   <div className="flex items-center gap-2">
                     <button
@@ -513,9 +514,19 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                     >
                       Daily
                     </button>
+                    <select
+                      value={seriesBreakdown}
+                      onChange={(e) => setSeriesBreakdown(e.target.value as any)}
+                      className="ml-2 px-3 py-1 rounded border border-gray-300 bg-white text-gray-800"
+                    >
+                      <option value="none">Default (Male+Female)</option>
+                      <option value="gender">By Gender</option>
+                      <option value="age">By Age</option>
+                      <option value="gender_age">By Gender & Age</option>
+                    </select>
                   </div>
                 </div>
-                <DwellTimeTimeChart data={dwellTimeSeries} isLoading={dwellSeriesLoading} viewType={seriesViewType} />
+                <DwellTimeTimeChart data={dwellTimeSeries} isLoading={dwellSeriesLoading} viewType={seriesViewType} breakdown={seriesBreakdown} />
               </div>
 
               <div className="space-y-4">
