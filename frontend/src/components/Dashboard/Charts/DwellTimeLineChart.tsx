@@ -102,12 +102,15 @@ export const DwellTimeLineChart: React.FC<DwellTimeLineChartProps> = ({
     data: aggregatedByAge.map(({ data }) => {
       const g = data[gender];
       if (!g) return 0;
-      const value = metricType === "total" ? g.totalDwell / 3600 : g.total / Math.max(g.count, 1) / 3600;
-      return Number(value.toFixed(3));
+      // OLD hours: const value = metricType === "total" ? g.totalDwell / 3600 : g.total / Math.max(g.count, 1) / 3600;
+      const value = metricType === "total" ? g.totalDwell / 60 : g.total / Math.max(g.count, 1) / 60;
+      return Number(value.toFixed(2));
     }),
     borderColor: GENDER_COLORS[gender],
     backgroundColor: GENDER_COLORS[gender],
-    tension: 0.4,
+    tension: 0.35,
+    pointRadius: 3,
+    pointHoverRadius: 4,
     fill: false,
   }));
 
@@ -129,7 +132,7 @@ export const DwellTimeLineChart: React.FC<DwellTimeLineChartProps> = ({
       tooltip: {
         callbacks: {
           label: function (context: any) {
-            return `${context.dataset.label}: ${context.parsed.y.toFixed(3)} hours`;
+            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} minutes`;
           },
         },
       },
@@ -143,13 +146,13 @@ export const DwellTimeLineChart: React.FC<DwellTimeLineChartProps> = ({
         beginAtZero: true,
         title: {
           display: true,
-          text: metricType === "total" ? "Total Dwell Time (Hours)" : "Average Dwell Time (Hours)",
+          text: metricType === "total" ? "Total Dwell Time (Minutes)" : "Average Dwell Time (Minutes)",
           font: chartTheme.fonts.axis,
         },
         ticks: {
           font: chartTheme.fonts.axis,
           callback: function (value: any) {
-            return Number(value).toFixed(3);
+            return `${Number(value).toFixed(0)}`;
           },
         },
       },

@@ -47,9 +47,6 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
   // Aggregate data by gender
   const genderData = data.reduce((acc, item) => {
     const gender = item.gender?.toLowerCase();
-    // if (!acc[gender]) {
-    //   acc[gender] = { total: 0, count: 0, totalDwell: 0 };
-    // }
     if (gender === 'male' || gender === 'female') {
       if (!acc[gender]) {
         acc[gender] = { total: 0, count: 0, totalDwell: 0 };
@@ -61,41 +58,42 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
     return acc;
   }, {} as Record<string, { total: number; count: number; totalDwell: number }>);
 
-  // Calculate dwell time by gender based on metric type
+  // Calculate dwell time by gender based on metric type (in minutes)
   const chartData = {
     labels: ['Male', 'Female'],
     datasets: [
       {
-        label: metricType === 'total' ? 'Total Dwell Time (Hours)' : 'Average Dwell Time (Hours)',
+        label: metricType === 'total' ? 'Total Dwell Time (Minutes)' : 'Average Dwell Time (Minutes)',
         data: [
           // Male data (first)
           genderData['male'] 
           ? Number((metricType === 'total' 
-              ? genderData['male'].totalDwell / 3600 
-              : genderData['male'].total / genderData['male'].count / 3600).toFixed(3))
+              // OLD hours: genderData['male'].totalDwell / 3600
+              ? genderData['male'].totalDwell / 60 
+              // OLD hours: genderData['male'].total / genderData['male'].count / 3600
+              : (genderData['male'].total / Math.max(genderData['male'].count, 1)) / 60).toFixed(2))
           : 0,
           // Female data (second)
           genderData['female']
           ? Number((metricType === 'total' 
-              ? genderData['female'].totalDwell / 3600 
-              : genderData['female'].total / genderData['female'].count / 3600).toFixed(3))
+              // OLD hours: genderData['female'].totalDwell / 3600
+              ? genderData['female'].totalDwell / 60 
+              // OLD hours: genderData['female'].total / genderData['female'].count / 3600
+              : (genderData['female'].total / Math.max(genderData['female'].count, 1)) / 60).toFixed(2))
           : 0
         ],
         backgroundColor: [
           GENDER_COLORS.male,
           GENDER_COLORS.female
         ],
-        // borderColor: [
-        //   GENDER_COLORS.male,
-        //   GENDER_COLORS.female
-        // ],
         borderWidth: 1,
+        borderRadius: 6,
+        maxBarThickness: 50
       },
     ],
   };
 
   const options = {
-    // indexAxis: 'y' as const, // Horizontal bar chart
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -112,7 +110,7 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
           label: function(context: any) {
             const value = context.parsed.y || context.parsed.x;
             const metricLabel = metricType === 'total' ? 'Total' : 'Average';
-            return `${metricLabel}: ${value.toFixed(3)} hours`;
+            return `${metricLabel}: ${Number(value).toFixed(2)} minutes`;
           }
         }
       }
@@ -132,11 +130,14 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
       y: {
         title: {
           display: true,
-          text: 'Hours',
+          text: 'Minutes',
           font: chartTheme.fonts.axis,
         },
         ticks: {
           font: chartTheme.fonts.axis,
+          callback: function(value: any) {
+            return `${Number(value).toFixed(0)}`;
+          }
         }
       }
     },

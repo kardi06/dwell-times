@@ -1,5 +1,5 @@
 import React from "react";
-import DatePicker from "react-datepicker";
+// import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 export type TimePeriod = "day" | "week" | "month" | "quarter" | "year";
@@ -100,7 +100,9 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
   return (
     <div className="space-y-4 mb-6 p-4 bg-white rounded-lg shadow-sm border">
       {/* Existing Filters */}
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap gap-4 items-end">
+        {/* OLD: Time Period control (hidden per new UX) */}
+        {/**
         <div className="flex flex-col">
           <label
             htmlFor="timePeriod"
@@ -121,7 +123,9 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
             ))}
           </select>
         </div>
+        */}
 
+        {/* Metric Type (kept) */}
         <div className="flex flex-col">
           <label
             htmlFor="metricType"
@@ -142,7 +146,9 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
             ))}
           </select>
         </div>
-        {/* Date/Period Picker */}
+
+        {/* OLD: Date/Period Picker (hidden per new UX) */}
+        {/**
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-700 mb-1">
             {timePeriod === "day"
@@ -185,6 +191,7 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
             )}
           </div>
         </div>
+        */}
       </div>
     </div>
   );
