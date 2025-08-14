@@ -25,8 +25,9 @@ export const GlobalFilterBar: React.FC = () => {
 		return toOptions(items);
 	};
 	const loadStores = async (input: string) => {
+		if (!draft.department) return [];
 		const params = new URLSearchParams();
-		if (draft.department) params.append("department", draft.department);
+		params.append("department", draft.department);
 		if (input) params.append("search", input);
 		const qs = params.toString() ? `?${params.toString()}` : "";
 		const items = await fetchItems(`/api/v1/analytics/filters/stores${qs}`);
@@ -162,7 +163,8 @@ export const GlobalFilterBar: React.FC = () => {
 				<div className="min-w-[220px]">
 					<label className="text-sm text-white/90 mb-1 block">Store</label>
 					<AsyncSelect
-						cacheOptions
+						key={`store-${draft.department || 'none'}`}
+						cacheOptions={false}
 						defaultOptions
 						isClearable
 						isSearchable
