@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FootTrafficDataPoint, FootTrafficChartConfig } from '../components/Dashboard/Charts/FootTrafficChart';
+import { useGlobalFilters } from '../store/globalFilters';
+import { computeRange, toApiDate } from '../utils/dateRange';
 
 interface UseFootTrafficDataReturn {
   data: FootTrafficDataPoint[];
@@ -12,9 +14,10 @@ export const useFootTrafficData = (config: FootTrafficChartConfig): UseFootTraff
   const [data, setData] = useState<FootTrafficDataPoint[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters();
 
   const fetchData = async () => {
-    if (!config.selectedDate) {
+    if (!config.selectedDate && !gDate) {
       setData([]);
       return;
     }
@@ -24,13 +27,14 @@ export const useFootTrafficData = (config: FootTrafficChartConfig): UseFootTraff
 
     try {
       // Format date for API - use local date to avoid timezone issues
-      const year = config.selectedDate.getFullYear();
-      const month = String(config.selectedDate.getMonth() + 1).padStart(2, '0');
-      const day = String(config.selectedDate.getDate()).padStart(2, '0');
+      const fallbackDate = config.selectedDate || new Date();
+      const year = fallbackDate.getFullYear();
+      const month = String(fallbackDate.getMonth() + 1).padStart(2, '0');
+      const day = String(fallbackDate.getDate()).padStart(2, '0');
       const dateStr = `${year}-${month}-${day}`;
       
       // Debug logging
-      console.log('Selected date object:', config.selectedDate);
+      console.log('Selected date object:', fallbackDate);
       console.log('Formatted date for API:', dateStr);
       console.log('Time period:', config.timePeriod);
       
@@ -42,12 +46,7 @@ export const useFootTrafficData = (config: FootTrafficChartConfig): UseFootTraff
         view_type: config.viewType
       });
 
-      // const response = await fetch(`http://localhost:8000/api/v1/analytics/
-      //   foot-traffic-data?${params}`);
       // Append global filters
-      const { useGlobalFilters } = await import('../store/globalFilters');
-      const { computeRange, toApiDate } = await import('../utils/dateRange');
-      const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters.getState();
       if (gDept) params.append('department', gDept);
       if (gStore) params.append('store', gStore);
       if (gDate) {
@@ -73,10 +72,10 @@ export const useFootTrafficData = (config: FootTrafficChartConfig): UseFootTraff
     }
   };
 
-  // Fetch data when config changes
+  // Fetch data when config or global filters change
   useEffect(() => {
     fetchData();
-  }, [config.timePeriod, config.selectedDate, config.cameraFilter, config.viewType]);
+  }, [config.timePeriod, config.selectedDate, config.cameraFilter, config.viewType, gDept, gStore, gPeriod, gDate]);
 
   const refetch = () => {
     fetchData();

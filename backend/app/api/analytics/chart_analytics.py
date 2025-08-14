@@ -369,4 +369,208 @@ async def get_foot_traffic_data(
         
     except Exception as e:
         logger.error(f"Failed to get foot traffic data: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.get("/foot-traffic-time-series")
+async def get_foot_traffic_time_series(
+    view_type: str = Query("hourly", description="View type: hourly or daily"),
+    breakdown: str = Query("none", description="Breakdown: none, gender, age, gender_age"),
+    department: Optional[str] = Query(None),
+    store: Optional[str] = Query(None),
+    camera: Optional[str] = Query(None),
+    start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
+    end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
+    db: Session = Depends(get_db)
+):
+    """Foot traffic series: distinct visitor counts grouped by hour (10-22) or day of week, with optional breakdowns."""
+    try:
+        if view_type not in ["hourly", "daily"]:
+            raise HTTPException(status_code=400, detail="Invalid view_type. Must be hourly or daily")
+        if breakdown not in ["none", "gender", "age", "gender_age"]:
+            raise HTTPException(status_code=400, detail="Invalid breakdown. Must be none, gender, age, or gender_age")
+
+        # Parse date range; default last 7 days
+        now = datetime.now()
+        start_dt = None
+        end_dt = None
+        if start_date:
+            try:
+                start_dt = datetime.fromisoformat(start_date)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid start_date format. Use YYYY-MM-DD")
+        if end_date:
+            try:
+                end_dt = datetime.fromisoformat(end_date)
+                end_dt = end_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
+        if not start_dt or not end_dt:
+            end_dt = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+            start_dt = (now - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+        # Base query with filters
+        query = db.query(CameraEvent)
+        if department:
+            query = query.filter(CameraEvent.department == department)
+        if store:
+            query = query.filter(CameraEvent.camera_group == store)
+        if camera:
+            query = query.filter(CameraEvent.camera_description == camera)
+        query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+        query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
+
+        # Time bucket expression
+        if view_type == "hourly":
+            query = query.filter(extract('hour', CameraEvent.utc_time_started_readable).between(10, 22))
+            time_expr = extract('hour', CameraEvent.utc_time_started_readable).label('bucket')
+        else:
+            time_expr = func.extract('dow', CameraEvent.utc_time_started_readable).label('bucket')
+
+        distinct_count = func.count(func.distinct(CameraEvent.person_id)).label('visitor_count')
+
+        rows = []
+        if breakdown in ("none", "gender"):
+            q = query.with_entities(
+                time_expr,
+                func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
+                distinct_count,
+            ).filter(
+                func.lower(func.coalesce(CameraEvent.gender_outcome, 'other')).in_(['male','female'])
+            ).group_by(time_expr, func.coalesce(CameraEvent.gender_outcome, 'other')).order_by(time_expr)
+            rows = q.all()
+        elif breakdown == "age":
+            q = query.with_entities(
+                time_expr,
+                func.coalesce(CameraEvent.age_group_outcome, 'Other').label('age_group'),
+                distinct_count,
+            ).filter(
+                func.lower(func.coalesce(CameraEvent.gender_outcome, 'other')).in_(['male','female'])
+            ).group_by(time_expr, func.coalesce(CameraEvent.age_group_outcome, 'Other')).order_by(time_expr)
+            rows = q.all()
+        else:  # gender_age
+            q = query.with_entities(
+                time_expr,
+                func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
+                func.coalesce(CameraEvent.age_group_outcome, 'Other').label('age_group'),
+                distinct_count,
+            ).filter(
+                func.lower(func.coalesce(CameraEvent.gender_outcome, 'other')).in_(['male','female'])
+            ).group_by(
+                time_expr,
+                func.coalesce(CameraEvent.gender_outcome, 'other'),
+                func.coalesce(CameraEvent.age_group_outcome, 'Other')
+            ).order_by(time_expr)
+            rows = q.all()
+
+        data = []
+        if view_type == "hourly":
+            hour_labels = ["10 AM", "11 AM", "12 PM", "1 PM", "2 PM", "3 PM", "4 PM", "5 PM", "6 PM", "7 PM", "8 PM", "9 PM", "10 PM"]
+            hours = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+            for i, hour in enumerate(hours):
+                bucket = { 'time_period': hour_labels[i] }
+                if breakdown in ("none", "gender"):
+                    male = female = 0
+                    for r in rows:
+                        if int(getattr(r, 'bucket')) == hour:
+                            if r.gender == 'male':
+                                male = int(getattr(r, 'visitor_count') or 0)
+                            elif r.gender == 'female':
+                                female = int(getattr(r, 'visitor_count') or 0)
+                    bucket['male_count'] = male
+                    bucket['female_count'] = female
+                    bucket['total_count'] = male + female
+                elif breakdown == "age":
+                    ages = {}
+                    total = 0
+                    for r in rows:
+                        if int(getattr(r, 'bucket')) == hour:
+                            age = getattr(r, 'age_group') or 'Other'
+                            if (age or '').lower() == 'inconclusive':
+                                continue
+                            count = int(getattr(r, 'visitor_count') or 0)
+                            ages[age] = count
+                            total += count
+                    bucket['age_groups'] = [ { 'age_group': k, 'count': v } for k, v in ages.items() ]
+                    bucket['total_count'] = total
+                else:
+                    gender_age = { 'male': {}, 'female': {} }
+                    total = 0
+                    for r in rows:
+                        if int(getattr(r, 'bucket')) == hour:
+                            g = getattr(r, 'gender')
+                            age = getattr(r, 'age_group') or 'Other'
+                            if (age or '').lower() == 'inconclusive':
+                                continue
+                            c = int(getattr(r, 'visitor_count') or 0)
+                            if g in ('male','female'):
+                                gender_age[g][age] = c
+                                total += c
+                    bucket['gender_age'] = { 'male': [ { 'age_group': k, 'count': v } for k, v in gender_age['male'].items() ], 'female': [ { 'age_group': k, 'count': v } for k, v in gender_age['female'].items() ] }
+                    bucket['total_count'] = total
+                data.append(bucket)
+        else:
+            day_labels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            day_mapping = {0: 6, 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5}
+            expected_days = [0,1,2,3,4,5,6]
+            for i, expected_day in enumerate(expected_days):
+                bucket = { 'time_period': day_labels[i] }
+                if breakdown in ("none", "gender"):
+                    male = female = 0
+                    for r in rows:
+                        db_day = int(getattr(r, 'bucket'))
+                        if db_day in day_mapping and day_mapping[db_day] == expected_day:
+                            if r.gender == 'male':
+                                male = int(getattr(r, 'visitor_count') or 0)
+                            elif r.gender == 'female':
+                                female = int(getattr(r, 'visitor_count') or 0)
+                    bucket['male_count'] = male
+                    bucket['female_count'] = female
+                    bucket['total_count'] = male + female
+                elif breakdown == "age":
+                    ages = {}
+                    total = 0
+                    for r in rows:
+                        db_day = int(getattr(r, 'bucket'))
+                        if db_day in day_mapping and day_mapping[db_day] == expected_day:
+                            age = getattr(r, 'age_group') or 'Other'
+                            if (age or '').lower() == 'inconclusive':
+                                continue
+                            count = int(getattr(r, 'visitor_count') or 0)
+                            ages[age] = count
+                            total += count
+                    bucket['age_groups'] = [ { 'age_group': k, 'count': v } for k, v in ages.items() ]
+                    bucket['total_count'] = total
+                else:
+                    gender_age = { 'male': {}, 'female': {} }
+                    total = 0
+                    for r in rows:
+                        db_day = int(getattr(r, 'bucket'))
+                        if db_day in day_mapping and day_mapping[db_day] == expected_day:
+                            g = getattr(r, 'gender')
+                            age = getattr(r, 'age_group') or 'Other'
+                            if (age or '').lower() == 'inconclusive':
+                                continue
+                            c = int(getattr(r, 'visitor_count') or 0)
+                            if g in ('male','female'):
+                                gender_age[g][age] = c
+                                total += c
+                    bucket['gender_age'] = { 'male': [ { 'age_group': k, 'count': v } for k, v in gender_age['male'].items() ], 'female': [ { 'age_group': k, 'count': v } for k, v in gender_age['female'].items() ] }
+                    bucket['total_count'] = total
+                data.append(bucket)
+
+        return {
+            'data': data,
+            'parameters': {
+                'view_type': view_type,
+                'breakdown': breakdown,
+                'start_date': start_dt.date().isoformat(),
+                'end_date': end_dt.date().isoformat(),
+                'department': department,
+                'store': store,
+                'camera': camera,
+            },
+            'debug': { 'rows': len(rows) }
+        }
+    except Exception as e:
+        logger.error(f"Failed to get foot-traffic time series: {e}")
         raise HTTPException(status_code=500, detail="Internal server error") 
