@@ -54,10 +54,16 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       <div className="p-6">
         {/* Logo */}
         <div className="flex items-center mb-8">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center mr-3">
-            <span className="text-white font-bold text-sm">X</span>
-          </div>
-          {!collapsed && <Text className="text-xl font-semibold text-gray-900">Xplico</Text>}
+          {collapsed ? (
+            <div className="flex items-center">
+              <img src="/xplico.png" alt="Xplico" className="h-15 w-15 rounded-md object-cover mr-3" />
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <img src="/xplico.png" alt="Xplico" className="h-10 w-10 rounded-md object-cover mr-3" />
+              <Text className="text-xl font-semibold text-gray-900">Xplico</Text>
+            </div>
+          )}
         </div>
 
         {/* Navigation Menu */}
