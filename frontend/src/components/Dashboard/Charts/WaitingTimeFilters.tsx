@@ -76,6 +76,7 @@ export const WaitingTimeFilters: React.FC<Props> = ({
     <div className="space-y-4 mb-6 p-4 bg-white rounded-lg shadow-sm border">
       <div className="flex flex-wrap gap-4 items-end">
         {/* Time Period */}
+        {/**
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-700 mb-1">
             Time Period
@@ -93,8 +94,10 @@ export const WaitingTimeFilters: React.FC<Props> = ({
             ))}
           </select>
         </div>
+        */}
 
         {/* Camera Group */}
+        {/**
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-700 mb-1">
             Camera Group
@@ -113,6 +116,7 @@ export const WaitingTimeFilters: React.FC<Props> = ({
             ))}
           </select>
         </div>
+        */}
 
         {/* Camera */}
         <div className="flex flex-col min-w-[170px]">
@@ -134,26 +138,31 @@ export const WaitingTimeFilters: React.FC<Props> = ({
           </select>
         </div>
 
-        {/* View Type */}
-        <div className="flex flex-col">
+        {/* View Type - as tabs */}
+        <div className="flex flex-col ml-auto">
           <label className="text-sm font-medium text-gray-700 mb-1">
             View Type
           </label>
-          <select
-            value={viewType}
-            onChange={(e) => onViewTypeChange(e.target.value as "hourly" | "daily")}
-            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            disabled={isLoading || timePeriod === "day"}
-          >
-            {viewTypeOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <button
+              className={`px-3 py-1 rounded ${viewType === 'hourly' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+              onClick={() => onViewTypeChange('hourly')}
+              disabled={isLoading}
+            >
+              Hourly
+            </button>
+            <button
+              className={`px-3 py-1 rounded ${viewType === 'daily' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+              onClick={() => onViewTypeChange('daily')}
+              disabled={isLoading}
+            >
+              Daily
+            </button>
+          </div>
         </div>
 
         {/* Date/Period Picker */}
+        {/**
         <div className="flex flex-col min-w-[130px]">
           <label className="text-sm font-medium text-gray-700 mb-1">
             {timePeriod === "day"
@@ -187,6 +196,7 @@ export const WaitingTimeFilters: React.FC<Props> = ({
             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
+        */}
       </div>
     </div>
   );

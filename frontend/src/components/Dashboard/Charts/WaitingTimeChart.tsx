@@ -145,7 +145,7 @@ export const WaitingTimeChart: React.FC<WaitingTimeChartProps> = ({
   }
 
   return (
-    <div className="w-full h-auto">
+    <div className="w-auto h-96">
       <Bubble data={chartData} options={options}/>
     </div>
   );

@@ -42,8 +42,6 @@ async def get_waiting_time_analytics(
         start_dt = None
         end_dt = None
         print("API waiting-time params:", start_date, end_date, camera_ids, camera_groups)
-        # if not start_date or not end_date:
-        #     raise HTTPException(status_code=400, detail="start_date and end_date are required")
         if start_date:
             try:
                 start_dt = datetime.fromisoformat(start_date)
@@ -56,17 +54,8 @@ async def get_waiting_time_analytics(
             except ValueError:
                 raise HTTPException(status_code=400, detail="Invalid end_date format. Use YYYY-MM-DD")
         
-        # Parse camera filters
-        # camera_id_list = None
-        # if camera_ids:
-        #     camera_id_list = [cid.strip() for cid in camera_ids.split(",") if cid.strip()]
-        
-        # camera_group_list = None
-        # if camera_groups:
-        #     camera_group_list = [cg.strip() for cg in camera_groups.split(",") if cg.strip()]
-        # 3) Parse camera filters
+        # Parse camera filters (IDs or descriptions sent by UI)
         camera_id_list = [cid.strip() for cid in camera_ids.split(",") if cid.strip()] if camera_ids else None
-
         camera_group_list = [cg.strip() for cg in camera_groups.split(",") if cg.strip()] if camera_groups else None
         
         # Build query filters
@@ -80,8 +69,15 @@ async def get_waiting_time_analytics(
             end_dt_plus_one = end_dt + timedelta(days=1)
             filters.append(CameraEvent.utc_time_started_readable < end_dt_plus_one)
         
+        # Apply camera filters (match either camera_id or camera_description)
         if camera_id_list:
-            filters.append(CameraEvent.camera_id.in_(camera_id_list))
+            lowered = [c.lower() for c in camera_id_list]
+            filters.append(
+                or_(
+                    CameraEvent.camera_id.in_(camera_id_list),
+                    func.lower(CameraEvent.camera_description).in_(lowered)
+                )
+            )
         
         if camera_group_list:
             filters.append(CameraEvent.camera_group.in_(camera_group_list))
@@ -97,31 +93,12 @@ async def get_waiting_time_analytics(
         else:  # daily
             time_trunc = func.date_trunc('day', CameraEvent.utc_time_started_readable)
         
-        # Build the query
-        # query = db.query(
-        #     time_trunc.label('time_period'),
-        #     CameraEvent.camera_group,
-        #     CameraEvent.camera_description,
-        #     func.count(func.distinct(CameraEvent.person_id)).label('waiting_count')
-        # ).filter(
-        #     and_(*filters)
-        # ).group_by(
-        #     time_trunc,
-        #     CameraEvent.camera_group,
-        #     CameraEvent.camera_description
-        # ).order_by(
-        #     time_trunc
-        # )
-
-        # Decide whether to group by camera_group or not
+        # Select columns
         select_columns = [time_trunc.label('time_period')]
         grouping_columns = []
-        # If they asked to filter by specific camera_groups, keep per-group breakdown
         if camera_group_list:
             grouping_columns += [CameraEvent.camera_group, CameraEvent.camera_description]
             select_columns += [CameraEvent.camera_group, CameraEvent.camera_description]
-
-        # Always count distinct persons
         select_columns.append(
             func.count(func.distinct(CameraEvent.person_id)).label('waiting_count')
         )
@@ -140,21 +117,6 @@ async def get_waiting_time_analytics(
         
         # Transform results to match API specification
         data = []
-        # for result in results:
-        #     # Format time_period based on view_type
-        #     if view_type == "hourly":
-        #         time_period_str = result.time_period.strftime('%Y-%m-%d %H:00:00')
-        #     else:
-        #         time_period_str = result.time_period.strftime('%Y-%m-%d')
-            
-        #     data.append({
-        #         "time_period": time_period_str,
-        #         "waiting_count": result.waiting_count,
-        #         "camera_info": {
-        #             "camera_description": result.camera_description,
-        #             "camera_group": result.camera_group
-        #         }
-        #     })
         for row in results:
             raw_tp = row.time_period
             if view_type == "hourly":

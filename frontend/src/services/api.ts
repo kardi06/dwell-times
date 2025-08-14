@@ -66,7 +66,17 @@ export const analyticsAPI = {
     cameraGroups?: string;
     department?: string;
     store?: string;
-  }) => api.get('/analytics/waiting-time', { params }),
+  }) => api.get('/analytics/waiting-time', {
+    params: {
+      view_type: params.viewType,
+      start_date: params.start_date,
+      end_date: params.end_date,
+      camera_ids: params.cameraIds,
+      camera_groups: params.cameraGroups,
+      department: params.department,
+      store: params.store,
+    }
+  }),
   
   // Camera list
   getCameras: () => api.get('/analytics/cameras'),
