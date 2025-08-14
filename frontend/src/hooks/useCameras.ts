@@ -35,16 +35,55 @@ export const useCameras = ({ department, store }: UseCamerasParams = {}): UseCam
 			const result = await response.json();
 			// result.items may be array of strings (legacy) or array of {camera, store}
 			const items = (result.items || []) as Array<string | { camera: string; store?: string }>;
-			const mapped: CameraOption[] = items
-				.map((it) => {
-					if (typeof it === 'string') {
-						return { value: it, label: store ? it : `${it}`, store: undefined };
+
+      // const mapped: CameraOption[] = items
+      //   .map((it) => {
+      //     if (typeof it === 'string') {
+      //       return { value: it, label: store ? it : `${it}`, store: 
+      //       undefined };
+      //     }
+      //     const cam = it.camera;
+      //     const grp = it.store;
+      //     return { value: cam, label: store ? cam : `${cam} (${grp || 
+      //     'Unknown'})`, store: grp };
+      //   })
+      //   .filter((opt) => !!opt.value);
+
+			let mapped: CameraOption[] = [];
+			if (!department && !store) {
+				// No global filters: unique camera names only, label as camera name
+				const seen = new Set<string>();
+				for (const it of items) {
+					const cam = typeof it === 'string' ? it : (it.camera || '');
+					if (!cam) continue;
+					if (seen.has(cam)) continue;
+					seen.add(cam);
+					mapped.push({ value: cam, label: cam });
+				}
+			} else if (department && !store) {
+				// Department only: add aggregated "(All Stores)" per camera, then list per-store entries
+				const seenCam = new Set<string>();
+				for (const it of items) {
+					const cam = typeof it === 'string' ? it : (it.camera || '');
+					if (!cam) continue;
+					if (!seenCam.has(cam)) {
+						seenCam.add(cam);
+						mapped.push({ value: cam, label: `${cam} (All Stores)` });
 					}
-					const cam = it.camera;
-					const grp = it.store;
-					return { value: cam, label: store ? cam : `${cam} (${grp || 'Unknown'})`, store: grp };
-				})
-				.filter((opt) => !!opt.value);
+				}
+				// Per-store entries intentionally omitted per requirements (department-only view shows aggregated only)
+			} else {
+				// Store selected: cameras for that store, label as camera name
+				const seen = new Set<string>();
+				for (const it of items) {
+					const cam = typeof it === 'string' ? it : (it.camera || '');
+					const grp = typeof it === 'string' ? undefined : it.store;
+					if (!cam) continue;
+					if (seen.has(cam)) continue;
+					seen.add(cam);
+					mapped.push({ value: cam, label: cam, store: grp });
+				}
+			}
 			setCameras(mapped);
 		} catch (err) {
 			console.error('Error fetching cameras:', err);

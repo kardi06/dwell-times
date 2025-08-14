@@ -1,11 +1,13 @@
 import React from "react";
 // import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { useGlobalFilters } from "../../../store/globalFilters";
+import { useCameras, type CameraOption as HookCameraOption } from "../../../hooks/useCameras";
 
 export type TimePeriod = "day" | "week" | "month" | "quarter" | "year";
 export type MetricType = "total" | "average";
 
-type CameraOption = { value: string; label: string };
+type CameraOption = HookCameraOption;
 
 interface ChartFiltersProps {
   timePeriod: TimePeriod;
@@ -43,6 +45,66 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
     { value: "total", label: "Total Dwell Time" },
     { value: "average", label: "Average Dwell Time" },
   ];
+
+  // Pull global Department/Store and fetch cameras accordingly
+  const { department: gDept, store: gStore } = useGlobalFilters();
+  const { cameras: fetchedCameras, isLoading: camerasLoading } = useCameras({
+    department: gDept || undefined,
+    store: gStore || undefined,
+  });
+
+  // Base options from props or fetched
+  const baseOptions: CameraOption[] = cameraOptions.length > 0 ? cameraOptions : fetchedCameras;
+
+  // Shape options per rules
+  let displayOptions: { value: string; label: string }[] = [];
+  if (!gDept && !gStore) {
+    // No department/store: list unique cameras across all, label as camera name only
+    const seen = new Set<string>();
+    for (const opt of baseOptions) {
+      const cam = (opt.value || "").trim();
+      if (!cam) continue;
+      if (!seen.has(cam)) {
+        seen.add(cam);
+        displayOptions.push({ value: cam, label: cam });
+      }
+    }
+  } else if (gDept && !gStore) {
+    // Add aggregated per-camera '(All Stores)' first
+    const seenCam = new Set<string>();
+    for (const opt of baseOptions) {
+      const cam = (opt.value || "").trim();
+      if (!cam) continue;
+      if (!seenCam.has(cam)) {
+        seenCam.add(cam);
+        displayOptions.push({ value: cam, label: `${cam} (All Stores)` });
+      }
+    }
+    // const seenPairs = new Set<string>();
+    // for (const opt of baseOptions) {
+    //   const cam = (opt.value || "").trim();
+    //   if (!cam) continue;
+    //   const storeName = (opt.store || "").trim();
+    //   if (!storeName) continue; // skip unknown stores
+    //   const key = `${cam}::${storeName}`;
+    //   if (seenPairs.has(key)) continue;
+    //   seenPairs.add(key);
+    //   displayOptions.push({ value: cam, label: `${cam} (${storeName})` });
+    // }
+    // Per-store options omitted when department is selected without store (show aggregated only)
+
+  } else {
+    // Store selected: only that store's cameras (API already filtered), label camera name
+    const seen = new Set<string>();
+    for (const opt of baseOptions) {
+      const cam = (opt.value || "").trim();
+      if (!cam) continue;
+      if (!seen.has(cam)) {
+        seen.add(cam);
+        displayOptions.push({ value: cam, label: cam });
+      }
+    }
+  }
 
   const formatDateDisplay = (date: Date | null, period: TimePeriod): string => {
     if (!date) return "";
@@ -134,10 +196,11 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
             value={selectedCamera}
             onChange={(e) => onCameraChange && onCameraChange(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={camerasLoading}
           >
             <option value="">All Cameras</option>
-            {cameraOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            {displayOptions.map((opt) => (
+              <option key={`${opt.value}::${opt.label}`} value={opt.value}>{opt.label}</option>
             ))}
           </select>
         </div>
