@@ -7047,3 +7047,387 @@ If you want, I can implement the GlobalFilterBar component and wire it into Dash
 
 ---
 
+_**User**_
+
+ok, now let's make another story, this story is to make another page, where the user can see. top 5 store with most visitor, top 5 store with most dwell time, top 5 store with less visitor, top 5 store with minimum dwell, and what again, do you think, can you give me idea ? this app is for the coo to improve their store and sales, this company have more than hundreed branch store and many branded product. Give me a plan first for this page, and the we make story.
+don't change anything if you don't understand about what you need to build minimum 95%, ask me for clarify
+
+---
+
+_**Assistant**_
+
+<think><details><summary>Thought Process</summary>**Proposing analytics plan**
+
+I need to create a plan for a new page with analytics that ranks top stores, based on user requirements. The plan should include sections that outline key metrics, filters, a data model, backend endpoints, and UX considerations. Ideas for metrics include top stores by visitors and dwell time, while filters might involve time periods and regions. I should also think about drilldowns for more detailed views and propose backend endpoints for pulling data efficiently. Export options are important too!
+**Developing metrics and plan**
+
+I'm thinking about how to measure visitor engagement by counting unique person IDs grouped by camera groups. For dwell time, I’ll use both the sum and average for those staying longer than 10 minutes. I should also include metrics like waiting time compliance and traffic efficiency, possibly as visitors per hour. Presenting this as a clear plan with headings will help: outlining goals, KPIs, global filters, and various chart sections, including top and bottom rankings for stores. Minimal modifications are needed!
+**Finalizing the analytics plan**
+
+I’m outlining the main points of the analytics plan, focusing on metrics like the top 5 by repeat visitor rate, growth comparisons, and identifying stores with peak congestion. To facilitate user interaction, clicking on a store row should show department and camera details. For the backend, I’ll specify endpoints for rankings and trends, while also considering performance optimizations. Finally, the UX should include clear tables and charts. It's important to maintain concise yet comprehensive bullet points throughout!</details></think>
+
+---
+
+Here’s a crisp plan for the new “Store Rankings” page targeted at a COO.
+
+Page purpose
+- Identify best/worst-performing stores to drive actions that improve traffic, experience, and sales proxies.
+
+Global filters (top of page)
+- Division → Department → Store (defaults All; cascades)
+- Time period + Date (day/week/month/quarter/year with adaptive date like on Dashboard)
+- Optional brand/product group (future)
+
+Key rankings (Top/Bottom N with toggle 5/10)
+- Top 5 Stores by Visitors (COUNT DISTINCT person_id)
+- Top 5 Stores by Total Dwell Time (SUM dwell_time)
+- Bottom 5 Stores by Visitors
+- Bottom 5 Stores by Average Dwell Time (AVG dwell_time)
+- Top 5 Stores by Waiting Violations (>10 min) (COUNT DISTINCT person_id WHERE dwell_time > 600)
+- Top 5 Stores by Repeat Visitors Rate (repeat_count / unique_visitors; person_id seen ≥2 times)
+- Top 5 Stores by Momentum (WoW/MoM growth in visitors; secondary: growth in violations ↓ is good)
+- Underperformers: Largest negative trend (visitors and/or avg dwell drop vs prev period)
+
+At-a-glance UX (each ranking block)
+- Horizontal bar chart + small sortable table (Store, Division, Department, Metric, Δ vs previous period)
+- Color cues: green good, red bad; tooltips with metric definitions
+- Click row → drill-down panel (store profile): hourly/daily trend, department breakdown, cameras, violations trend; deep link to Dashboard pre-filtered
+
+Data definitions (per store = camera_group)
+- unique_visitors = COUNT(DISTINCT person_id)
+- total_dwell_time = SUM(dwell_time)
+- avg_dwell_time = AVG(dwell_time) over visits
+- wait_violations = COUNT(DISTINCT person_id) WHERE dwell_time > 600
+- repeat_rate = COUNT(DISTINCT person_id HAVING COUNT(*) >= 2) / unique_visitors
+- period_change = (current - previous) / previous
+- momentum = visitors_current - visitors_previous (or %)
+
+Backend plan
+- Endpoint: GET /api/v1/analytics/store-rankings
+  - Query: metric=visitors|dwell_total|dwell_avg|wait_10m|repeat_rate|momentum|underperformers
+  - limit=5|10, order=desc|asc, division, department, start_date, end_date
+- Endpoint: GET /api/v1/analytics/store-profile?store=... (for drill-down)
+  - returns hourly/daily series, dept split, camera list, violations series
+- SQL (examples; all GROUP BY camera_group with optional division/department WHERE):
+  - visitors: SELECT camera_group, COUNT(DISTINCT person_id) …
+  - dwell_total/avg: SUM/AVG(dwell_time) …
+  - wait_10m: COUNT(DISTINCT person_id) WHERE dwell_time > 600 …
+  - repeat_rate: WITH visits AS (…) GROUP BY person_id HAVING COUNT(*)>=2 …
+  - momentum/underperformers: compute both current and previous period; order by delta
+- Performance: use existing indexes (camera_group, department, division, dwell_time, created_at); cache results per filter; cap N=10
+
+Frontend plan
+- New page: StoreRankingsPage
+  - Reuse GlobalFilterBar (division/department/store/time+date)
+  - RankingGrid: cards for each metric (bar chart + table + “View All” → modal)
+  - DrillDownDrawer: store profile with mini dashboard/trends
+  - Export: CSV for current ranking; PNG for chart
+- Visual design: clean, legible bars, consistent scales per card, clear deltas, skeletons on load; mobile layout stacks cards
+
+Rollout phases
+- Phase 1 (MVP): visitors, dwell_total, dwell_avg, wait_10m (Top/Bottom), drill-down
+- Phase 2: repeat_rate, momentum, underperformers; “View All” with pagination
+- Phase 3: add brand/product filters (if data available), alerting for outliers
+
+If this plan looks good, I’ll draft the story (acceptance criteria, tasks, API contracts, SQL patterns, UX details) and add it to docs/stories.
+
+---
+
+_**User**_
+
+for visitor, unique person_id (group by date/day) , if same visitor go to the same store today and next day, i calculate 2 visitor ,
+for repeat visitor -> go to same store for more than 1 day ,
+and if same unique person go to different store, even in one day. it will calculate.
+is that correct ?
+
+---
+
+_**Assistant**_
+
+<think><details><summary>Thought Process</summary>**Clarifying visitor metrics**
+
+I'm dissecting how to define and compute daily visitors by store. To find daily visitors for a specific date, I’ll count distinct person IDs where the date matches. 
+
+For total visitors over a period, I’m considering if I should sum daily counts or count distinct visitors per store, which could get complicated. I need to clarify if the total across the period should account for each unique visitor across multiple days and stores. I’ll use the formula COUNT(DISTINCT (person_id, camera_group, date)) for this.
+**Defining visitor statistics**
+
+I'm determining how to use SQL to count distinct visitors with the formula COUNT(DISTINCT (person_id, camera_group, DATE(utc_time_started_readable))). 
+
+For repeat visitors at a store over a period, we need to identify individuals who visit the same store on at least two distinct dates. Then, I’ll count unique person IDs per store. 
+
+If someone visits different stores on the same day, I’ll include them in each store's daily count. I’ll clarify edge cases, like counting visits across cameras in the same store as one for the day. I'll also provide explicit SQL patterns for these calculations.</details></think>
+
+---
+
+Yes — if we define the metrics per store (camera_group) using daily uniqueness, your rules are correct. Here are precise definitions to avoid ambiguity, plus SQL patterns you can use.
+
+Definitions (per store)
+- Daily visitors (per store, per day): Count each person_id once per store per calendar day.
+  - If the same person returns tomorrow to the same store, that contributes another visitor (so 2 over two days).
+  - If the same person visits two different stores on the same day, they are counted once in each store’s daily visitors.
+- Repeat visitors (per store, over a period): Persons who visited the same store on 2+ distinct days within the selected period.
+  - Count them once per store in the final repeat visitor count.
+- Company-wide/All-stores note: If you ever need an “all stores” unique visitor metric, that would be distinct person_id per day across all stores (different from the per-store counts above).
+
+PostgreSQL patterns
+- Daily visitors by store and date:
+```sql
+SELECT
+  camera_group AS store,
+  DATE(utc_time_started_readable) AS visit_date,
+  COUNT(DISTINCT person_id) AS daily_visitors
+FROM camera_events
+WHERE utc_time_started_readable BETWEEN :start AND :end
+GROUP BY store, visit_date
+ORDER BY store, visit_date;
+```
+
+- Total visitors over a period (summing daily-unique per store):
+```sql
+SELECT
+  camera_group AS store,
+  COUNT(DISTINCT (person_id, camera_group, DATE(utc_time_started_readable))) AS visitors_over_period
+FROM camera_events
+WHERE utc_time_started_readable BETWEEN :start AND :end
+GROUP BY store
+ORDER BY visitors_over_period DESC;
+```
+
+- Repeat visitors (same store on ≥2 distinct days in period):
+```sql
+WITH per_day AS (
+  SELECT DISTINCT
+    person_id,
+    camera_group AS store,
+    DATE(utc_time_started_readable) AS visit_date
+  FROM camera_events
+  WHERE utc_time_started_readable BETWEEN :start AND :end
+),
+repeaters AS (
+  SELECT
+    store,
+    person_id
+  FROM per_day
+  GROUP BY store, person_id
+  HAVING COUNT(DISTINCT visit_date) >= 2
+)
+SELECT
+  store,
+  COUNT(*) AS repeat_visitors
+FROM repeaters
+GROUP BY store
+ORDER BY repeat_visitors DESC;
+```
+
+Edge-case clarifications
+- Multiple events in the same store on the same day for the same person_id are counted once.
+- Visiting multiple cameras within the same store on the same day still counts once for that store/day.
+- Visiting multiple stores (different camera_group) on the same day counts separately for each store’s daily visitor metric (as you want).
+
+If you also want cross-store “explorers” (people who visited 2+ different stores within the period), we can add that too.
+
+---
+
+_**User**_
+
+ok, then make next story based on above and your answer before
+
+---
+
+_**Assistant**_
+
+<think><details><summary>Thought Process</summary>**Creating a new story file**
+
+I need to create a new story based on the previously defined plan for the Store Rankings page. The user confirmed the metrics definitions, so I should set up a file like docs/stories/1.15.store-rankings-page.md. This file will include acceptance criteria, metrics definitions, backend endpoints, SQL patterns, frontend components, UX, filters, and testing details. There won’t be any code changes, just story creation. I’m ensuring to include additional metrics suggestions and consistent mapping as we implement this.</details></think>
+
+---
+
+<details><summary>Edit file: docs/stories/1.15.store-rankings-page.md</summary>
+
+I will create a new story for a Store Rankings page using the agreed metric definitions and earlier plan.
+
+**Chunk 1**
+Lines added: 157, lines removed: 1
+
+```diff
+@@ -1,1 +1,157 @@
+- 
++ # Story 1.15: Store Rankings Page (COO Performance Insights)
++ 
++ ## Status
++ Ready for Review
++ 
++ ## Story
++ **As a** COO,
++ **I want** a rankings page that shows top/bottom stores by key operational metrics,
++ **so that** I can quickly detect issues, identify best practices, and improve store performance at scale.
++ 
++ ## Global Filters (top of page)
++ - Division → `camera_events.division`
++ - Department → `camera_events.department`
++ - Time period + Date (same UX as Dashboard/ChartFilters)
++ - Optional: Store pre-filter (defaults All) for drill-ins
++ 
++ These global filters apply to every widget on this page (rankings + drill-down). They combine with any local options within widgets.
++ 
++ ## Metrics & Definitions (per Store = `camera_group`)
++ - **Daily Visitors (per store, per day)**: count each `person_id` once per store per calendar day.
++ - **Visitors Over Period**: `COUNT(DISTINCT (person_id, camera_group, DATE(utc_time_started_readable)))` summed over the selected period for that store.
++ - **Repeat Visitors (per store)**: persons who visited the same store on **2+ distinct days** in the selected period.
++ - **Total Dwell Time**: `SUM(dwell_time)` (seconds) for that store and period.
++ - **Average Dwell Time**: `AVG(dwell_time)` for that store and period.
++ - **Waiting Violations**: `COUNT(DISTINCT person_id)` where `dwell_time > 600` seconds (10 minutes) per store and period.
++ - **Momentum (Visitors)**: change vs previous period (Δ visitors_over_period or %).
++ - **Underperformers (Trend)**: largest negative change vs previous period (visitors and/or avg dwell).
++ 
++ Notes
++ - If a person visits multiple stores in a day, they are counted once in each store’s **daily** visitors.
++ - Multiple events in the same store/day from the same person count once toward daily visitors.
++ 
++ ## Rankings to Show (Top/Bottom N with 5/10 toggle)
++ 1. Top 5 Stores by Visitors
++ 2. Top 5 Stores by Total Dwell Time
++ 3. Bottom 5 Stores by Visitors
++ 4. Bottom 5 Stores by Average Dwell Time (minimum)
++ 5. Top 5 Stores by Waiting Violations (>10m)
++ 6. Top 5 Stores by Repeat Visitor Rate
++ 7. Momentum Winners (highest positive Δ visitors vs previous period)
++ 8. Underperformers (largest negative Δ visitors vs previous period)
++ 
++ Each ranking widget displays:
++ - Horizontal bar chart + small sortable table (Store, Division, Department, Metric, Δ vs previous)
++ - Tooltip with metric explanation; color cues (green ↑, red ↓)
++ - Click row → DrillDown drawer (store profile) with hourly/daily trend, camera list, violations trend
++ 
++ ## Backend
++ ### Endpoints
++ - `GET /api/v1/analytics/store-rankings`
++   - Query:
++     - `metric`: `visitors|dwell_total|dwell_avg|wait_10m|repeat_rate|momentum|underperformers`
++     - `order`: `desc|asc` (default by metric meaning; bottom lists use `asc`)
++     - `limit`: `5|10`
++     - `division`, `department`, `start_date`, `end_date`
++   - Response (generic):
++     ```json
++     {
++       "metric": "visitors",
++       "rows": [
++         {
++           "store": "Plaza A",
++           "division": "Fashion",
++           "department": "Men",
++           "value": 1234,
++           "delta": 0.12  // compared to previous period
++         }
++       ]
++     }
++     ```
++ 
++ - `GET /api/v1/analytics/store-profile?store=...&start_date=...&end_date=...`
++   - Returns drill-down payload for the drawer: hourly/daily series, dwell distributions, violations series, camera list.
++ 
++ ### SQL Patterns (PostgreSQL)
++ - Visitors Over Period by store:
++   ```sql
++   SELECT
++     camera_group AS store,
++     COUNT(DISTINCT (person_id, camera_group, DATE(utc_time_started_readable))) AS visitors_over_period
++   FROM camera_events
++   WHERE utc_time_started_readable BETWEEN :start AND :end
++     AND (:division IS NULL OR division = :division)
++     AND (:department IS NULL OR department = :department)
++   GROUP BY store
++   ORDER BY visitors_over_period DESC
++   LIMIT :limit;
++   ```
++ 
++ - Repeat Visitors (≥2 days):
++   ```sql
++   WITH per_day AS (
++     SELECT DISTINCT person_id, camera_group AS store, DATE(utc_time_started_readable) AS visit_date
++     FROM camera_events
++     WHERE utc_time_started_readable BETWEEN :start AND :end
++       AND (:division IS NULL OR division = :division)
++       AND (:department IS NULL OR department = :department)
++   ), repeaters AS (
++     SELECT store, person_id
++     FROM per_day
++     GROUP BY store, person_id
++     HAVING COUNT(DISTINCT visit_date) >= 2
++   )
++   SELECT store, COUNT(*) AS repeat_visitors
++   FROM repeaters
++   GROUP BY store
++   ORDER BY repeat_visitors DESC
++   LIMIT :limit;
++   ```
++ 
++ - Waiting Violations (>600s):
++   ```sql
++   SELECT camera_group AS store, COUNT(DISTINCT person_id) AS wait_violations
++   FROM camera_events
++   WHERE dwell_time > 600
++     AND utc_time_started_readable BETWEEN :start AND :end
++     AND (:division IS NULL OR division = :division)
++     AND (:department IS NULL OR department = :department)
++   GROUP BY store
++   ORDER BY wait_violations DESC
++   LIMIT :limit;
++   ```
++ 
++ - Momentum / Underperformers: compute current and previous period in one CTE and order by delta.
++ 
++ Indexes used: `idx_group_dept_div`, `idx_department`, `idx_division`, `idx_created_at_analytics`, `idx_dwell_time_analytics`.
++ 
++ ## Frontend
++ ### Page: `StoreRankingsPage`
++ - Reuse `GlobalFilterBar` (Division, Department, TimePeriod/Date)
++ - RankingGrid: 8 cards (responsive 1/2/4 columns)
++ - Each card: horizontal bar chart (Chart.js) + compact table; toggle Top 5 / Top 10
++ - DrillDownDrawer: opens on row click → store profile mini-dashboard
++ - Actions: Export CSV (visible rows), Download PNG for chart
++ 
++ ### Visual/UX
++ - Clean layout, clear hierarchy, delightful tooltips
++ - Color-coded deltas (green positive, red negative) with ▲▼ glyphs
++ - Skeleton loaders; disabled interactions during load; accessible labels
++ 
++ ## Tasks / Subtasks
++ - [ ] Backend: implement `/store-rankings` endpoint and metrics; add `/store-profile` drill‑down
++ - [ ] Frontend: build `StoreRankingsPage` + RankingCard + DrillDownDrawer components
++ - [ ] Integrate GlobalFilterBar and date logic
++ - [ ] Wire navigation (sidebar/link) and deep-linking from Dashboard
++ - [ ] Tests: unit (SQL/service), integration (API), E2E (page interactions)
++ - [ ] Docs: endpoint descriptions, metric definitions, “how to read” help
++ 
++ ## Non‑Goals (for now)
++ - Brand/product filter (future when data available)
++ - Per-store revenue links (no POS integration yet)
++ 
++ ## Change Log
++ | Date       | Version | Description                         | Author |
++ |------------|---------|-------------------------------------|--------|
++ | 2025-01-30 | 1.0     | Initial story for Store Rankings    | SM     |
++ 
+```
+
+</details>
+
+---
+
+Created Story 1.15: Store Rankings Page (COO Performance Insights)
+
+- Added file: docs/stories/1.15.store-rankings-page.md
+- Encodes your confirmed visitor logic:
+  - Daily visitors per store = unique person_id per store per day
+  - Visitors over period uses distinct (person_id, store, date)
+  - Repeat visitors = same person_id visiting the same store on 2+ distinct days
+  - Cross-store visits count separately for each store’s metrics
+- Rankings included: Top/Bottom visitors, total/avg dwell, waiting violations (>10m), repeat rate, momentum, underperformers
+- Backend plan with endpoints and SQL patterns
+- Frontend plan for a clean, actionable page with drill-down
+
+If you approve, I can proceed to implement the backend endpoint scaffolding and a skeleton page next.
+
+---
+
