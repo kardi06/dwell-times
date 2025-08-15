@@ -500,7 +500,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
               {/* New: Time Series (Avg Dwell by Hour/Day) */}
               <div className="mb-6 bg-white rounded-lg p-4 shadow-sm border">
                 <div className="flex flex-wrap items-center justify-between mb-3 gap-2">
-                  <h4 className="text-md font-semibold text-gray-800">Average Dwell Time</h4>
+                  <h4 className="text-md font-semibold text-gray-800">{metricType === 'average' ? 'Average Dwell Time' : 'Total Dwell Time'}</h4>
                   <div className="flex items-center gap-2">
                     <button
                       className={`px-3 py-1 rounded ${seriesViewType === 'hourly' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
@@ -526,7 +526,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                     </select>
                   </div>
                 </div>
-                <DwellTimeTimeChart data={dwellTimeSeries} isLoading={dwellSeriesLoading} viewType={seriesViewType} breakdown={seriesBreakdown} />
+                <DwellTimeTimeChart data={dwellTimeSeries} isLoading={dwellSeriesLoading} viewType={seriesViewType} breakdown={seriesBreakdown} metricType={metricType} />
               </div>
 
               <div className="space-y-4">

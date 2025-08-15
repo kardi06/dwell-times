@@ -20,9 +20,11 @@ interface Props {
 	isLoading?: boolean;
 	viewType: "hourly" | "daily";
 	breakdown: "none" | "gender" | "age" | "gender_age";
+	metricType?: "average" | "total";
 }
 
-export const DwellTimeTimeChart: React.FC<Props> = ({ data, title = "Average Dwell Time by Time", isLoading = false, viewType, breakdown }) => {
+export const DwellTimeTimeChart: React.FC<Props> = ({ data, title, isLoading = false, viewType, breakdown, metricType = "average" }) => {
+	const computedTitle = title ?? (metricType === 'average' ? 'Average Dwell Time by Time' : 'Total Dwell Time by Time');
 	if (isLoading) {
 		return (
 			<div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
@@ -141,7 +143,7 @@ export const DwellTimeTimeChart: React.FC<Props> = ({ data, title = "Average Dwe
 		plugins: {
 			title: {
 				display: true,
-				text: title,
+				text: computedTitle,
 				font: { size: 16, weight: "600" },
 			},
 			legend: { position: "top" as const },
@@ -165,9 +167,36 @@ export const DwellTimeTimeChart: React.FC<Props> = ({ data, title = "Average Dwe
 		},
 	};
 
+	// Custom plugin to render non-zero value labels; hidden while hovering (tooltip active)
+	const valueLabelPlugin = {
+		id: 'valueLabelPlugin',
+		afterDatasetsDraw(chart: any) {
+			const active = chart.tooltip && chart.tooltip.getActiveElements ? chart.tooltip.getActiveElements() : [];
+			if (active && active.length > 0) return; // hide labels on hover
+			const { ctx } = chart;
+			ctx.save();
+			chart.data.datasets.forEach((ds: any, di: number) => {
+				const meta = chart.getDatasetMeta(di);
+				meta.data.forEach((element: any, i: number) => {
+					const raw = ds.data[i];
+					const val = typeof raw === 'number' ? raw : Number(raw);
+					if (!isNaN(val) && val !== 0) {
+						const pos = element.tooltipPosition ? element.tooltipPosition() : element;
+						ctx.fillStyle = '#111827'; // gray-800
+						ctx.font = '600 10px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+						ctx.textAlign = 'center';
+						ctx.textBaseline = 'bottom';
+						ctx.fillText(val.toFixed(1), pos.x, pos.y - 6);
+					}
+				});
+			});
+			ctx.restore();
+		},
+	};
+
 	return (
 		<div className="w-full h-64">
-			<Line data={chartData} options={options} />
+			<Line data={chartData} options={options} plugins={[valueLabelPlugin]} />
 		</div>
 	);
 };

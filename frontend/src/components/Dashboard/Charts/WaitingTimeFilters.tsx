@@ -65,17 +65,13 @@ export const WaitingTimeFilters: React.FC<Props> = ({
   }, [timePeriod, date]);
 
   // Ambil camera yang harus tampil
-  const visibleCameras =
-    selectedGroup
-      ? cameras.filter((c) => c.group === selectedGroup)
-      : cameras;
+  // const visibleCameras = selectedGroup ? cameras.filter((c) => c.group === selectedGroup) : cameras;
 
-  // Camera select: jika ingin multiselect, pakai <select multiple>
-  // Jika hanya single, jadikan single select
+  // Camera select: fixed to 'camera cashier'
   return (
     <div className="space-y-4 mb-6 p-4 bg-white rounded-lg shadow-sm border">
       <div className="flex flex-wrap gap-4 items-end">
-        {/* Time Period */}
+        {/* Time Period (hidden - driven by global) */}
         {/**
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-700 mb-1">
@@ -96,7 +92,7 @@ export const WaitingTimeFilters: React.FC<Props> = ({
         </div>
         */}
 
-        {/* Camera Group */}
+        {/* Camera Group (hidden) */}
         {/**
         <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-700 mb-1">
@@ -124,17 +120,23 @@ export const WaitingTimeFilters: React.FC<Props> = ({
             Camera
           </label>
           <select
-            value={selectedCameras[0] || ""}
-            onChange={(e) => onCameraChange(e.target.value ? [e.target.value] : [])}
+            // value={selectedCameras[0] || ""}
+            // onChange={(e) => onCameraChange(e.target.value ? [e.target.
+            // value] : [])}
+            value={"camera cashier"}
+            onChange={() => onCameraChange(["camera cashier"])}
             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             disabled={isLoading}
           >
+            <option value="camera cashier">camera cashier</option>
+            {/**
             <option value="">All Cameras</option>
             {visibleCameras.map((cam) => (
               <option key={cam.id} value={cam.id}>
                 {cam.description}
               </option>
             ))}
+            */}
           </select>
         </div>
 
@@ -161,7 +163,7 @@ export const WaitingTimeFilters: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Date/Period Picker */}
+        {/* Date/Period Picker (hidden) */}
         {/**
         <div className="flex flex-col min-w-[130px]">
           <label className="text-sm font-medium text-gray-700 mb-1">

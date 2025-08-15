@@ -36,7 +36,8 @@ export const useWaitingTimeData = (
         viewType: params.viewType ?? "hourly",
         start_date: params.start_date,
         end_date: params.end_date,
-        cameraIds: params.cameraIds,
+        // Force camera cashier if not specified
+        cameraIds: params.cameraIds || "camera cashier",
         cameraGroups: params.cameraGroups,
         department: params.department,
         store: params.store,

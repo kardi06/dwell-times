@@ -17,7 +17,8 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
 	// Local filters: only view type and camera
 	const [viewType, setViewType] = useState<"hourly" | "daily">("hourly");
 	const [selectedGroup, setSelectedGroup] = useState("");
-	const [selectedCameras, setSelectedCameras] = useState<string[]>([]);
+	// Force camera selection to 'camera cashier'
+	const [selectedCameras, setSelectedCameras] = useState<string[]>(["camera cashier"]);
 	// const [cameras, setCameras] = useState<Camera[]>([]);
 
 	// Global filters
@@ -39,7 +40,10 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
 		viewType,
 		start_date: toApiDate(rangeStart),
 		end_date: toApiDate(rangeEnd),
-		cameraIds: selectedCameras.length ? selectedCameras.join(",") : undefined,
+    // cameraIds: selectedCameras.length ? selectedCameras.join(",") : 
+    // undefined,
+		// Force only 'camera cashier'
+		cameraIds: "camera cashier",
 		cameraGroups: gStore ? undefined : selectedGroup || undefined,
 		department: gDept || undefined,
 		store: gStore || undefined,
@@ -56,8 +60,11 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
 		setViewType(type);
 	}, []);
 
-	const handleCameraChange = useCallback((cameras: string[]) => {
-		setSelectedCameras(cameras);
+	// const handleCameraChange = useCallback((cameras: string[]) => {
+  //   setSelectedCameras(cameras);
+  // Camera change disabled (fixed to 'camera cashier')
+	const handleCameraChange = useCallback((_cameras: string[]) => {
+		setSelectedCameras(["camera cashier"]);
 	}, []);
 
 	return (
@@ -71,7 +78,8 @@ const WaitingTimeAnalyticsComponent: React.FC = () => {
 				onViewTypeChange={handleViewTypeChange}
 				selectedGroup={""}
 				onGroupChange={() => {}}
-				selectedCameras={selectedCameras}
+				// Force 'camera cashier'
+				selectedCameras={["camera cashier"]}
 				onCameraChange={handleCameraChange}
 				date={gDate || new Date()}
 				onDateChange={() => {}}

@@ -28,6 +28,7 @@ export const WaitingTimeChart: React.FC<WaitingTimeChartProps> = ({
   isLoading,
   error,
 }) => {
+  // Data is pre-filtered to 'camera cashier' upstream
   // Generate labels
   let labels: string[];
   if (viewType === "hourly") {

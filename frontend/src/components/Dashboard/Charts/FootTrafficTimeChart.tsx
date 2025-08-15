@@ -126,7 +126,8 @@ export const FootTrafficTimeChart: React.FC<Props> = ({ data, title = "Foot Traf
   const options: any = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: {
+    plugins: 
+    {
       title: {
         display: true,
         text: title,
@@ -153,9 +154,36 @@ export const FootTrafficTimeChart: React.FC<Props> = ({ data, title = "Foot Traf
     },
   };
 
+  // Custom plugin to render non-zero value labels; hidden while hovering (tooltip active)
+  const valueLabelPlugin = {
+    id: 'valueLabelPlugin',
+    afterDatasetsDraw(chart: any) {
+      const active = chart.tooltip && chart.tooltip.getActiveElements ? chart.tooltip.getActiveElements() : [];
+      if (active && active.length > 0) return; // hide labels on hover
+      const { ctx } = chart;
+      ctx.save();
+      chart.data.datasets.forEach((ds: any, di: number) => {
+        const meta = chart.getDatasetMeta(di);
+        meta.data.forEach((element: any, i: number) => {
+          const raw = ds.data[i];
+          const val = typeof raw === 'number' ? raw : Number(raw);
+          if (!isNaN(val) && val !== 0) {
+            const pos = element.tooltipPosition ? element.tooltipPosition() : element;
+            ctx.fillStyle = '#111827';
+            ctx.font = '600 10px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(`${Math.round(val)}`, pos.x, pos.y - 6);
+          }
+        });
+      });
+      ctx.restore();
+    },
+  };
+
   return (
     <div className="w-full h-64">
-      <Line data={chartData} options={options} />
+      <Line data={chartData} options={options} plugins={[valueLabelPlugin]} />
     </div>
   );
 };
