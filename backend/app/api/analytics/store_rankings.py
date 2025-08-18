@@ -46,7 +46,7 @@ async def get_store_rankings(
 	end_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
 	db: Session = Depends(get_db)
 ):
-	"""Return store rankings for the requested metric. First iteration implements 'visitors'."""
+	"""Return store rankings for the requested metric. Implements 'visitors' and 'dwell_avg'."""
 	try:
 		start_dt, end_dt = _parse_dates(start_date, end_date)
 
@@ -77,24 +77,18 @@ async def get_store_rankings(
 				func.date(CameraEvent.utc_time_started_readable),
 			)
 			# Step 2: sum over period for each store
+			per_day_sq = per_day.subquery()
 			summed = db.query(
-				per_day.c.store,
-				func.sum(per_day.c.daily_visitors).label("value"),
-			)
-			if division or department:
-				# division/department already applied in base; ensure we carry filters by reusing base in subquery
-				per_day = per_day.subquery()
-				summed = db.query(per_day.c.store, func.sum(per_day.c.daily_visitors).label("value"))
-			order_by_expr = per_day.c.store  # placeholder, will be overwritten
-			# finish
-			summed = summed.group_by(per_day.c.store)
+				per_day_sq.c.store,
+				func.sum(per_day_sq.c.daily_visitors).label("value"),
+			).group_by(per_day_sq.c.store)
 			# Sort
 			if order_dir is None:
 				order_dir = "desc"
 			if order_dir == "asc":
-				summed = summed.order_by(func.sum(per_day.c.daily_visitors).asc())
+				summed = summed.order_by(func.sum(per_day_sq.c.daily_visitors).asc())
 			else:
-				summed = summed.order_by(func.sum(per_day.c.daily_visitors).desc())
+				summed = summed.order_by(func.sum(per_day_sq.c.daily_visitors).desc())
 			# Limit
 			results = summed.limit(limit).all()
 			# Shape
@@ -110,7 +104,33 @@ async def get_store_rankings(
 			]
 			metric_key = "visitors"
 
-		# TODO: implement other metrics step-by-step in subsequent commits
+		elif metric == "dwell_avg":
+			# Average dwell_time per store across the period (seconds)
+			q = base.with_entities(
+				CameraEvent.camera_group.label("store"),
+				func.avg(CameraEvent.dwell_time).label("avg_dwell_sec"),
+			).filter(CameraEvent.dwell_time.isnot(None)).group_by(CameraEvent.camera_group)
+			# Sorting default for 'bottom' lists is asc if not provided
+			if order_dir is None:
+				order_dir = "asc"
+			if order_dir == "asc":
+				q = q.order_by(func.avg(CameraEvent.dwell_time).asc())
+			else:
+				q = q.order_by(func.avg(CameraEvent.dwell_time).desc())
+			results = q.limit(limit).all()
+			rows = [
+				{
+					"store": r[0] or "Unknown",
+					"division": division or None,
+					"department": department or None,
+					"value": float(r[1] or 0.0),
+					"delta": 0.0,
+				}
+				for r in results
+			]
+			metric_key = "dwell_avg"
+
+		# TODO: implement dwell_total, wait_10m, repeat_rate, momentum, underperformers
 
 		return {
 			"metric": metric_key,

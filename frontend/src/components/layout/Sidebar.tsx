@@ -36,6 +36,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       icon: <BarChartOutlined />,
       label: 'Analytics',
     },
+    {
+      key: '/store-rankings',
+      icon: <BarChartOutlined />,
+      label: 'Store Rankings',
+    },
   ];
 
   const handleMenuClick = ({ key }: { key: string }) => {
