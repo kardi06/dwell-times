@@ -4,7 +4,8 @@ import {
   DashboardOutlined, 
   UploadOutlined, 
   BarChartOutlined,
-  UserOutlined
+  UserOutlined,
+  BankOutlined
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -27,20 +28,21 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       label: 'Dashboard',
     },
     {
+      key: '/store-rankings',
+      icon: <BankOutlined />,
+      label: 'Store Rankings',
+    },
+    {
       key: '/upload',
       icon: <UploadOutlined />,
       label: 'Upload Data',
     },
-    {
-      key: '/analytics',
-      icon: <BarChartOutlined />,
-      label: 'Analytics',
-    },
-    {
-      key: '/store-rankings',
-      icon: <BarChartOutlined />,
-      label: 'Store Rankings',
-    },
+    // {
+    //   key: '/analytics',
+    //   icon: <BarChartOutlined />,
+    //   label: 'Analytics',
+    // },
+    
   ];
 
   const handleMenuClick = ({ key }: { key: string }) => {
