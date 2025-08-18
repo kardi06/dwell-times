@@ -5,6 +5,7 @@ import Dashboard from './components/Dashboard/Dashboard';
 import UploadPage from './pages/UploadPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import AppLayout from './components/layout/AppLayout';
+import StoreRankingsPage from './pages/StoreRankingsPage';
 
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
@@ -40,6 +41,7 @@ function App() {
               <Route path="/" element={<Dashboard token={token}/>} />
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/store-rankings" element={<React.Suspense fallback={null}><StoreRankingsPage /></React.Suspense>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </AppLayout>

@@ -78,6 +78,17 @@ export const analyticsAPI = {
     }
   }),
   
+  // Store rankings
+  getStoreRankings: (params: {
+    metric?: 'visitors' | 'dwell_total' | 'dwell_avg' | 'wait_10m' | 'repeat_rate' | 'momentum' | 'underperformers';
+    order?: 'asc' | 'desc';
+    limit?: 5 | 10;
+    division?: string;
+    department?: string;
+    start_date?: string;
+    end_date?: string;
+  }) => api.get('/analytics/store-rankings', { params }),
+  
   // Camera list
   getCameras: () => api.get('/analytics/cameras'),
   
