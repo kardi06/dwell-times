@@ -69,7 +69,7 @@ export const WaitingTimeFilters: React.FC<Props> = ({
 
   // Camera select: fixed to 'camera cashier'
   return (
-    <div className="space-y-4 mb-6 p-4 bg-white rounded-lg shadow-sm border">
+    <div className="space-y-4 mb-6 p-4 ">
       <div className="flex flex-wrap gap-4 items-end">
         {/* Time Period (hidden - driven by global) */}
         {/**
@@ -115,6 +115,7 @@ export const WaitingTimeFilters: React.FC<Props> = ({
         */}
 
         {/* Camera */}
+        {/*
         <div className="flex flex-col min-w-[170px]">
           <label className="text-sm font-medium text-gray-700 mb-1">
             Camera
@@ -136,12 +137,12 @@ export const WaitingTimeFilters: React.FC<Props> = ({
                 {cam.description}
               </option>
             ))}
-            */}
+            
           </select>
         </div>
-
+        */}
         {/* View Type - as tabs */}
-        <div className="flex flex-col ml-auto">
+        <div className="flex flex-col">
           <label className="text-sm font-medium text-gray-700 mb-1">
             View Type
           </label>
