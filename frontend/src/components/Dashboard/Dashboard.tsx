@@ -76,11 +76,12 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   const [seriesViewType, setSeriesViewType] = useState<"hourly" | "daily">("hourly");
   const [seriesBreakdown, setSeriesBreakdown] = useState<"none" | "gender" | "age" | "gender_age">("none");
   // New: camera category for general dwell charts (all = entrance+store only)
-  const [cameraCategory, setCameraCategory] = useState<'all' | 'entrance' | 'store'>('all');
+  const [cameraCategory, setCameraCategory] = useState<'all' | 'entrance' | 'store' >('all');
 
   // Cashier Efficiency local controls
   const [cashierViewType, setCashierViewType] = useState<"hourly" | "daily">("hourly");
   const [cashierMetricType, setCashierMetricType] = useState<MetricType>("average");
+  const [cashierBreakdown, setCashierBreakdown] = useState<"none" | "gender" | "age" | "gender_age">("none");
 
   const formatDateForApi = (date: Date) => {
     const y = date.getFullYear();
@@ -104,7 +105,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   const { data: dwellTimeSeries, isLoading: dwellSeriesLoading } = useDwellTimeTimeSeries({ viewType: seriesViewType, metricType: metricType === 'average' ? 'average' : 'total', breakdown: seriesBreakdown, camera: selectedCamera || undefined, cameraCategory });
 
   // Cashier Efficiency series
-  const { data: cashierSeries, isLoading: cashierLoading } = useDwellTimeTimeSeries({ viewType: cashierViewType, metricType: cashierMetricType, breakdown: 'none', cameraCategory: 'cashier' });
+  const { data: cashierSeries, isLoading: cashierLoading } = useDwellTimeTimeSeries({ viewType: cashierViewType, metricType: cashierMetricType, breakdown: cashierBreakdown, cameraCategory: 'cashier' });
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -277,6 +278,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
       if (gDept) params.append("department", gDept);
       if (gStore) params.append("store", gStore);
       if (selectedCamera) params.append("camera", selectedCamera);
+      // NEW: pass camera_category for Bar/Line charts
+      if (cameraCategory) params.append("camera_category", cameraCategory);
 
       // Global date range overrides local
       if (gDate) {
@@ -369,7 +372,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
 
   useEffect(() => {
     fetchChartData();
-  }, [timePeriod, metricType, selectedDate, selectedCamera]);
+  }, [timePeriod, metricType, selectedDate, selectedCamera, cameraCategory]);
 
   // const renderKpiDateFilters = () => null;
 
@@ -570,8 +573,25 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
             </div>
           </Card>
 
-          {/* Cashier Efficiency */}
+          {/* Foot Traffic Chart */}
           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <div className="p-6">
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                  Foot Traffic Analytics
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Visitor flow and traffic patterns
+                </p>
+              </div>
+              <div className="bg-white rounded-lg p-4 shadow-sm">
+                <FootTrafficAnalytics />
+              </div>
+            </div>
+          </Card>
+
+           {/* Cashier Efficiency */}
+           <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
@@ -589,26 +609,15 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                       <option value="average">Average</option>
                       <option value="total">Total</option>
                     </select>
+                    <select value={cashierBreakdown} onChange={(e) => setCashierBreakdown(e.target.value as any)} className="ml-2 px-3 py-1 rounded border border-gray-300 bg-white text-gray-800">
+                      <option value="none">Default (Male+Female)</option>
+                      <option value="gender">By Gender</option>
+                      <option value="age">By Age</option>
+                      <option value="gender_age">By Gender & Age</option>
+                    </select>
                   </div>
                 </div>
-                <DwellTimeTimeChart data={cashierSeries} isLoading={cashierLoading} viewType={cashierViewType} breakdown={'none'} metricType={cashierMetricType} />
-              </div>
-            </div>
-          </Card>
-
-          {/* Foot Traffic Chart */}
-          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-            <div className="p-6">
-              <div className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                  Foot Traffic Analytics
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Visitor flow and traffic patterns
-                </p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm">
-                <FootTrafficAnalytics />
+                <DwellTimeTimeChart data={cashierSeries} isLoading={cashierLoading} viewType={cashierViewType} breakdown={cashierBreakdown} metricType={cashierMetricType} />
               </div>
             </div>
           </Card>

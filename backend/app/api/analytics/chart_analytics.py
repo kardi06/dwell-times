@@ -9,7 +9,7 @@ Endpoints:
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, or_, not_
 from typing import Optional
 from datetime import datetime, timedelta
 import logging
@@ -31,6 +31,7 @@ async def get_chart_data(
     department: Optional[str] = Query(None),
     store: Optional[str] = Query(None),
     camera: Optional[str] = Query(None),
+    camera_category: Optional[str] = Query(None, description="Camera category: all, entrance, store, cashier"),
     db: Session = Depends(get_db)
 ):
     """Get chart data for dwell time analytics with demographic breakdowns"""
@@ -70,33 +71,66 @@ async def get_chart_data(
         if end_dt:
             query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
 
-        # Apply time period filtering only if no specific dates are provided
-        if not start_dt and not end_dt:
-            if time_period == "day":
-                # Get data for the last 24 hours
-                end_dt = datetime.now()
-                start_dt = end_dt - timedelta(days=1)
-                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
-            elif time_period == "week":
-                # Get data for the last 7 days
-                end_dt = datetime.now()
-                start_dt = end_dt - timedelta(days=7)
-                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
-            elif time_period == "month":
-                # Get data for the last 30 days
-                end_dt = datetime.now()
-                start_dt = end_dt - timedelta(days=30)
-                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
-            elif time_period == "quarter":
-                # Get data for the last 90 days
-                end_dt = datetime.now()
-                start_dt = end_dt - timedelta(days=90)
-                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
-            elif time_period == "year":
-                # Get data for the last 365 days
-                end_dt = datetime.now()
-                start_dt = end_dt - timedelta(days=365)
-                query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
+        # # Apply time period filtering only if no specific dates are provided
+        # if not start_dt and not end_dt:
+        #     if time_period == "day":
+        #         # Get data for the last 24 hours
+        #         end_dt = datetime.now()
+        #         start_dt = end_dt - timedelta(days=1)
+        #         query = query.filter(CameraEvent.utc_time_started_readable 
+        #         >= start_dt)
+        #     elif time_period == "week":
+        #         # Get data for the last 7 days
+        #         end_dt = datetime.now()
+        #         start_dt = end_dt - timedelta(days=7)
+        #         query = query.filter(CameraEvent.utc_time_started_readable 
+        #         >= start_dt)
+        #     elif time_period == "month":
+        #         # Get data for the last 30 days
+        #         end_dt = datetime.now()
+        #         start_dt = end_dt - timedelta(days=30)
+        #         query = query.filter(CameraEvent.utc_time_started_readable 
+        #         >= start_dt)
+        #     elif time_period == "quarter":
+        #         # Get data for the last 90 days
+        #         end_dt = datetime.now()
+        #         start_dt = end_dt - timedelta(days=90)
+        #         query = query.filter(CameraEvent.utc_time_started_readable 
+        #         >= start_dt)
+        #     elif time_period == "year":
+        #         # Get data for the last 365 days
+        #         end_dt = datetime.now()
+        #         start_dt = end_dt - timedelta(days=365)
+        #         query = query.filter(CameraEvent.utc_time_started_readable 
+        #         >= start_dt)
+        
+        # Camera category filtering (exclude cashier by default)
+        cashier_kw = ["cashier", "kasir", "checkout", "till", "payment", "counter"]
+        entrance_kw = ["entrance", "entry", "front door", "gate"]
+        def ilike_any(col, keywords):
+            cond = None
+            for kw in keywords:
+                like = f"%{kw}%"
+                part = func.coalesce(col, '').ilike(like)
+                cond = part if cond is None else or_(cond, part)
+            return cond
+        cashier_cond = or_(
+            ilike_any(CameraEvent.camera_description, cashier_kw),
+            ilike_any(CameraEvent.zone_name, cashier_kw),
+        )
+        entrance_cond = or_(
+            ilike_any(CameraEvent.camera_description, entrance_kw),
+            ilike_any(CameraEvent.zone_name, entrance_kw),
+        )
+        if camera_category == "cashier":
+            query = query.filter(cashier_cond)
+        elif camera_category == "entrance":
+            query = query.filter(entrance_cond)
+        elif camera_category == "store":
+            query = query.filter(not_(cashier_cond)).filter(not_(entrance_cond))
+        else:
+            # None or 'all': exclude cashier by default
+            query = query.filter(not_(cashier_cond))
 
         # Aggregate data by age group and gender
         result = query.with_entities(
@@ -105,6 +139,9 @@ async def get_chart_data(
             func.sum(CameraEvent.dwell_time).label('total_dwell_time'),
             func.avg(CameraEvent.dwell_time).label('avg_dwell_time'),
             func.count(CameraEvent.id).label('event_count')
+        ).filter(
+            func.lower(func.coalesce(CameraEvent.age_group_outcome, ''))
+              .notin_(['inconclusive','other','not_determined'])
         ).group_by(
             func.coalesce(CameraEvent.age_group_outcome, 'Other'),
             func.coalesce(CameraEvent.gender_outcome, 'other')
@@ -134,11 +171,15 @@ async def get_chart_data(
             "time_period": time_period,
             "metric_type": metric_type,
             "total_records": len(chart_data),
-            "debug": {
+            "parameters": {
                 "start_date": start_date,
                 "end_date": end_date,
                 "start_dt": start_dt.isoformat() if start_dt else None,
-                "end_dt": end_dt.isoformat() if end_dt else None
+                "end_dt": end_dt.isoformat() if end_dt else None,
+                "department": department,
+                "store": store,
+                "camera": camera,
+                "camera_category": camera_category or 'all-excluding-cashier',
             }
         }
 

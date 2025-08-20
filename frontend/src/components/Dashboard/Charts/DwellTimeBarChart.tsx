@@ -44,19 +44,20 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
     );
   }
 
-  // Aggregate data by gender
+  // Aggregate data by gender (weighted by event_count for averages)
   const genderData = data.reduce((acc, item) => {
     const gender = item.gender?.toLowerCase();
     if (gender === 'male' || gender === 'female') {
       if (!acc[gender]) {
-        acc[gender] = { total: 0, count: 0, totalDwell: 0 };
+        acc[gender] = { totalAvgSecondsWeighted: 0, totalEvents: 0, totalDwellSeconds: 0 };
       }
-      acc[gender].total += item.avg_dwell_time;
-      acc[gender].count += 1;
-      acc[gender].totalDwell += item.total_dwell_time;
+      acc[gender].totalDwellSeconds += item.total_dwell_time || 0;
+      acc[gender].totalEvents += item.event_count || 0;
+      // Keep a weighted running total for average as well (redundant if we have totals)
+      acc[gender].totalAvgSecondsWeighted += (item.avg_dwell_time || 0) * (item.event_count || 0);
     }
     return acc;
-  }, {} as Record<string, { total: number; count: number; totalDwell: number }>);
+  }, {} as Record<string, { totalAvgSecondsWeighted: number; totalEvents: number; totalDwellSeconds: number }>);
 
   // Calculate dwell time by gender based on metric type (in minutes)
   const chartData = {
@@ -68,18 +69,14 @@ export const DwellTimeBarChart: React.FC<DwellTimeBarChartProps> = ({
           // Male data (first)
           genderData['male'] 
           ? Number((metricType === 'total' 
-              // OLD hours: genderData['male'].totalDwell / 3600
-              ? genderData['male'].totalDwell / 60 
-              // OLD hours: genderData['male'].total / genderData['male'].count / 3600
-              : (genderData['male'].total / Math.max(genderData['male'].count, 1)) / 60).toFixed(2))
+              ? genderData['male'].totalDwellSeconds / 60 
+              : (genderData['male'].totalDwellSeconds / Math.max(genderData['male'].totalEvents, 1)) / 60).toFixed(2))
           : 0,
           // Female data (second)
           genderData['female']
           ? Number((metricType === 'total' 
-              // OLD hours: genderData['female'].totalDwell / 3600
-              ? genderData['female'].totalDwell / 60 
-              // OLD hours: genderData['female'].total / genderData['female'].count / 3600
-              : (genderData['female'].total / Math.max(genderData['female'].count, 1)) / 60).toFixed(2))
+              ? genderData['female'].totalDwellSeconds / 60 
+              : (genderData['female'].totalDwellSeconds / Math.max(genderData['female'].totalEvents, 1)) / 60).toFixed(2))
           : 0
         ],
         backgroundColor: [

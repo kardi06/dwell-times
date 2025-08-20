@@ -85,8 +85,8 @@ export const DwellTimeTimeChart: React.FC<Props> = ({ data, title, isLoading = f
 		// Collect unique age groups from data
 		const ageSet = new Set<string>();
 		data.forEach((p) => (p.age_groups || []).forEach((ag) => {
-			const name = ag.age_group || "";
-			if (name.toLowerCase() !== "inconclusive") ageSet.add(name);
+			const name = (ag.age_group || "").toLowerCase();
+			if (name && name !== "inconclusive" && name !== "other" && name !== "not_determined") ageSet.add(ag.age_group || "");
 		}));
 		const ages = Array.from(ageSet);
 		ages.forEach((age, idx) => {
@@ -109,8 +109,8 @@ export const DwellTimeTimeChart: React.FC<Props> = ({ data, title, isLoading = f
 		// discover age buckets from both genders
 		const ageSet = new Set<string>();
 		data.forEach((p) => {
-			(p.gender_age?.male || []).forEach((ag) => { const n = ag.age_group || ""; if (n.toLowerCase() !== "inconclusive") ageSet.add(n); });
-			(p.gender_age?.female || []).forEach((ag) => { const n = ag.age_group || ""; if (n.toLowerCase() !== "inconclusive") ageSet.add(n); });
+			(p.gender_age?.male || []).forEach((ag) => { const n = (ag.age_group || '').toLowerCase(); if (n && n !== 'inconclusive' && n !== 'other' && n !== 'not_determined') ageSet.add(ag.age_group || ''); });
+			(p.gender_age?.female || []).forEach((ag) => { const n = (ag.age_group || '').toLowerCase(); if (n && n !== 'inconclusive' && n !== 'other' && n !== 'not_determined') ageSet.add(ag.age_group || ''); });
 		});
 		const ages = Array.from(ageSet);
 		ages.forEach((age, i) => {
