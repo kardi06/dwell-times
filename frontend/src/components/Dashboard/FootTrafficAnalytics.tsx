@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { FootTrafficChart, FootTrafficChartConfig } from './Charts/FootTrafficChart';
+import { 
+  // FootTrafficChart, 
+  FootTrafficChartConfig } 
+from './Charts/FootTrafficChart';
 import { FootTrafficFilters } from './Charts/FootTrafficFilters';
 import { useFootTrafficData } from '../../hooks/useFootTrafficData';
 import { useCameras } from '../../hooks/useCameras';

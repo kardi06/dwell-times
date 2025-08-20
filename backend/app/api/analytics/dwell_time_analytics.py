@@ -9,7 +9,7 @@ Endpoints:
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, extract, or_, not_
 from typing import Optional
 from datetime import datetime, timedelta
 import logging
@@ -153,6 +153,7 @@ async def get_dwell_time_time_series(
     department: Optional[str] = Query(None),
     store: Optional[str] = Query(None),
     camera: Optional[str] = Query(None),
+    camera_category: Optional[str] = Query(None, description="Camera category: all, entrance, store, cashier"),
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db)
@@ -165,6 +166,8 @@ async def get_dwell_time_time_series(
             raise HTTPException(status_code=400, detail="Invalid metric_type. Must be average or total")
         if breakdown not in ["none", "gender", "age", "gender_age"]:
             raise HTTPException(status_code=400, detail="Invalid breakdown. Must be none, gender, age, or gender_age")
+        if camera_category and camera_category not in ["all", "entrance", "store", "cashier"]:
+            raise HTTPException(status_code=400, detail="Invalid camera_category. Must be all, entrance, store, or cashier")
 
         # Parse date range; default last 7 days if not provided
         now = datetime.now()
@@ -196,7 +199,39 @@ async def get_dwell_time_time_series(
         query = query.filter(CameraEvent.utc_time_started_readable >= start_dt)
         query = query.filter(CameraEvent.utc_time_started_readable <= end_dt)
 
-        # Aggregation
+        # Camera category filtering
+        # Define keyword-based conditions for cashier and entrance
+        cashier_kw = ["cashier", "kasir", "checkout", "till", "payment", "counter"]
+        entrance_kw = ["entrance", "entry", "front door", "gate"]
+        def ilike_any(col, keywords):
+            cond = None
+            for kw in keywords:
+                like = f"%{kw}%"
+                part = func.coalesce(col, '').ilike(like)
+                cond = part if cond is None else or_(cond, part)
+            return cond
+
+        cashier_cond = or_(
+            ilike_any(CameraEvent.camera_description, cashier_kw),
+            ilike_any(CameraEvent.zone_name, cashier_kw),
+        )
+        entrance_cond = or_(
+            ilike_any(CameraEvent.camera_description, entrance_kw),
+            ilike_any(CameraEvent.zone_name, entrance_kw),
+        )
+
+        # Apply logic: default (None) and 'all' exclude cashier; 'entrance' include entrance only; 'store' exclude cashier and entrance; 'cashier' include cashier only
+        if camera_category == "cashier":
+            query = query.filter(cashier_cond)
+        elif camera_category == "entrance":
+            query = query.filter(entrance_cond)
+        elif camera_category == "store":
+            query = query.filter(not_(cashier_cond)).filter(not_(entrance_cond))
+        else:
+            # None or 'all': exclude cashier; include both entrance and store
+            query = query.filter(not_(cashier_cond))
+
+        # Aggregation expressions
         if view_type == "hourly":
             query = query.filter(extract('hour', CameraEvent.utc_time_started_readable).between(10, 22))
             time_expr = extract('hour', CameraEvent.utc_time_started_readable).label('bucket')
@@ -208,9 +243,21 @@ async def get_dwell_time_time_series(
         sum_expr = func.sum(CameraEvent.dwell_time).label('sum_sec')
         cnt_expr = func.count(CameraEvent.id).label('event_count')
 
+        # Build rows based on breakdown
         rows = []
-        if breakdown in ("none", "gender"):
-            # group by time and gender; later we can reduce to total if breakdown == none
+        if breakdown == "none":
+            q = query.with_entities(
+                time_expr,
+                avg_expr,
+                sum_expr,
+                cnt_expr,
+            ).filter(
+                func.coalesce(CameraEvent.age_group_outcome, 'Other') != 'inconclusive'
+            ).group_by(
+                time_expr,
+            ).order_by(time_expr)
+            rows = q.all()
+        elif breakdown == "gender":
             q = query.with_entities(
                 time_expr,
                 func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
@@ -218,35 +265,27 @@ async def get_dwell_time_time_series(
                 sum_expr,
                 cnt_expr,
             ).filter(
-                func.lower(func.coalesce(CameraEvent.gender_outcome, 'other')).in_(['male','female'])
-            ).group_by(time_expr, func.coalesce(CameraEvent.gender_outcome, 'other')).order_by(time_expr)
-            rows = q.all()
-        elif breakdown == "age":
-            # group by time and age group (aggregate across genders male/female only)
-            q = query.with_entities(
-                time_expr,
-                func.coalesce(CameraEvent.age_group_outcome, 'Other').label('age_group'),
-                avg_expr,
-                sum_expr,
-                cnt_expr,
-            ).filter(
-                func.lower(func.coalesce(CameraEvent.gender_outcome, 'other')).in_(['male','female'])
-            ).group_by(time_expr, func.coalesce(CameraEvent.age_group_outcome, 'Other')).order_by(time_expr)
-            rows = q.all()
-        else:  # gender_age
-            q = query.with_entities(
-                time_expr,
-                func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
-                func.coalesce(CameraEvent.age_group_outcome, 'Other').label('age_group'),
-                avg_expr,
-                sum_expr,
-                cnt_expr,
-            ).filter(
-                func.lower(func.coalesce(CameraEvent.gender_outcome, 'other')).in_(['male','female'])
+                func.coalesce(CameraEvent.age_group_outcome, 'Other') != 'inconclusive'
             ).group_by(
                 time_expr,
                 func.coalesce(CameraEvent.gender_outcome, 'other'),
-                func.coalesce(CameraEvent.age_group_outcome, 'Other')
+            ).order_by(time_expr)
+            rows = q.all()
+        else:
+            # age or gender_age
+            q = query.with_entities(
+                time_expr,
+                func.coalesce(CameraEvent.age_group_outcome, 'Other').label('age_group'),
+                func.coalesce(CameraEvent.gender_outcome, 'other').label('gender'),
+                avg_expr,
+                sum_expr,
+                cnt_expr,
+            ).filter(
+                func.coalesce(CameraEvent.age_group_outcome, 'Other') != 'inconclusive'
+            ).group_by(
+                time_expr,
+                func.coalesce(CameraEvent.age_group_outcome, 'Other'),
+                func.coalesce(CameraEvent.gender_outcome, 'other'),
             ).order_by(time_expr)
             rows = q.all()
 
@@ -257,18 +296,32 @@ async def get_dwell_time_time_series(
             hours = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22]
             for i, hour in enumerate(hours):
                 bucket = { 'time_period': hour_labels[i] }
-                male_count = female_count = 0
-                # Aggregate values into bucket based on breakdown
-                if breakdown in ("none", "gender"):
+                if breakdown == "none":
+                    avg_val = 0.0
+                    sum_val = 0.0
+                    cnt_val = 0
+                    for r in rows:
+                        if int(getattr(r, 'bucket')) == hour:
+                            avg_val = float(getattr(r, 'avg_sec') or 0)
+                            sum_val = float(getattr(r, 'sum_sec') or 0)
+                            cnt_val = int(getattr(r, 'event_count') or 0)
+                            break
+                    if metric_type == 'average':
+                        bucket['total_minutes'] = round(avg_val / 60.0, 2)
+                    else:
+                        bucket['total_minutes'] = round(sum_val / 60.0, 2)
+                    bucket['sample_size'] = cnt_val
+                elif breakdown in ("none", "gender"):  # gender handled here
+                    male_count = female_count = 0
                     male_val = female_val = 0.0
                     male_sum = female_sum = 0.0
                     for r in rows:
                         if int(getattr(r, 'bucket')) == hour:
-                            if r.gender == 'male':
+                            if getattr(r, 'gender') == 'male':
                                 male_val = float(getattr(r, 'avg_sec') or 0)
                                 male_sum = float(getattr(r, 'sum_sec') or 0)
                                 male_count = int(getattr(r, 'event_count') or 0)
-                            elif r.gender == 'female':
+                            elif getattr(r, 'gender') == 'female':
                                 female_val = float(getattr(r, 'avg_sec') or 0)
                                 female_sum = float(getattr(r, 'sum_sec') or 0)
                                 female_count = int(getattr(r, 'event_count') or 0)
@@ -283,51 +336,53 @@ async def get_dwell_time_time_series(
                         bucket['female_minutes'] = round(female_sum / 60.0, 2)
                         bucket['total_minutes'] = round((male_sum + female_sum) / 60.0, 2)
                     bucket['sample_size'] = male_count + female_count
-                elif breakdown == "age":
+                else:
+                    # age or gender_age branches remain as before
                     age_groups = {}
                     total_sum = 0.0
                     total_cnt = 0
-                    for r in rows:
-                        if int(getattr(r, 'bucket')) == hour:
-                            age = getattr(r, 'age_group') or 'Other'
-                            val = float(getattr(r, 'avg_sec') or 0)
-                            s = float(getattr(r, 'sum_sec') or 0)
-                            c = int(getattr(r, 'event_count') or 0)
-                            if metric_type == 'average':
-                                age_groups[age] = round(val / 60.0, 2)
-                                total_sum += val * c
-                                total_cnt += c
-                            else:
-                                age_groups[age] = round(s / 60.0, 2)
-                                total_sum += s
-                                total_cnt += c
-                    bucket['age_groups'] = [ { 'age_group': k, 'minutes': v } for k, v in age_groups.items() ]
-                    bucket['total_minutes'] = round((total_sum / total_cnt) / 60.0, 2) if metric_type == 'average' and total_cnt > 0 else round(total_sum / 60.0, 2)
-                    bucket['sample_size'] = total_cnt
-                else:  # gender_age
-                    gender_age = { 'male': {}, 'female': {} }
-                    total_sum = 0.0
-                    total_cnt = 0
-                    for r in rows:
-                        if int(getattr(r, 'bucket')) == hour:
-                            g = getattr(r, 'gender')
-                            age = getattr(r, 'age_group') or 'Other'
-                            val = float(getattr(r, 'avg_sec') or 0)
-                            s = float(getattr(r, 'sum_sec') or 0)
-                            c = int(getattr(r, 'event_count') or 0)
-                            if g not in ('male','female'):
-                                continue
-                            if metric_type == 'average':
-                                gender_age[g][age] = round(val / 60.0, 2)
-                                total_sum += val * c
-                                total_cnt += c
-                            else:
-                                gender_age[g][age] = round(s / 60.0, 2)
-                                total_sum += s
-                                total_cnt += c
-                    bucket['gender_age'] = { 'male': [ { 'age_group': k, 'minutes': v } for k, v in gender_age['male'].items() ], 'female': [ { 'age_group': k, 'minutes': v } for k, v in gender_age['female'].items() ] }
-                    bucket['total_minutes'] = round((total_sum / total_cnt) / 60.0, 2) if metric_type == 'average' and total_cnt > 0 else round(total_sum / 60.0, 2)
-                    bucket['sample_size'] = total_cnt
+                    if breakdown == "age":
+                        for r in rows:
+                            if int(getattr(r, 'bucket')) == hour:
+                                age = getattr(r, 'age_group') or 'Other'
+                                val = float(getattr(r, 'avg_sec') or 0)
+                                s = float(getattr(r, 'sum_sec') or 0)
+                                c = int(getattr(r, 'event_count') or 0)
+                                if metric_type == 'average':
+                                    age_groups[age] = round(val / 60.0, 2)
+                                    total_sum += val * c
+                                    total_cnt += c
+                                else:
+                                    age_groups[age] = round(s / 60.0, 2)
+                                    total_sum += s
+                                    total_cnt += c
+                        bucket['age_groups'] = [ { 'age_group': k, 'minutes': v } for k, v in age_groups.items() ]
+                        bucket['total_minutes'] = round((total_sum / total_cnt) / 60.0, 2) if metric_type == 'average' and total_cnt > 0 else round(total_sum / 60.0, 2)
+                        bucket['sample_size'] = total_cnt
+                    else:  # gender_age
+                        gender_age = { 'male': {}, 'female': {} }
+                        total_sum = 0.0
+                        total_cnt = 0
+                        for r in rows:
+                            if int(getattr(r, 'bucket')) == hour:
+                                g = getattr(r, 'gender')
+                                age = getattr(r, 'age_group') or 'Other'
+                                val = float(getattr(r, 'avg_sec') or 0)
+                                s = float(getattr(r, 'sum_sec') or 0)
+                                c = int(getattr(r, 'event_count') or 0)
+                                if g not in ('male','female'):
+                                    continue
+                                if metric_type == 'average':
+                                    gender_age[g][age] = round(val / 60.0, 2)
+                                    total_sum += val * c
+                                    total_cnt += c
+                                else:
+                                    gender_age[g][age] = round(s / 60.0, 2)
+                                    total_sum += s
+                                    total_cnt += c
+                        bucket['gender_age'] = { 'male': [ { 'age_group': k, 'minutes': v } for k, v in gender_age['male'].items() ], 'female': [ { 'age_group': k, 'minutes': v } for k, v in gender_age['female'].items() ] }
+                        bucket['total_minutes'] = round((total_sum / total_cnt) / 60.0, 2) if metric_type == 'average' and total_cnt > 0 else round(total_sum / 60.0, 2)
+                        bucket['sample_size'] = total_cnt
                 data.append(bucket)
         else:
             day_labels = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -335,18 +390,34 @@ async def get_dwell_time_time_series(
             expected_days = [0,1,2,3,4,5,6]
             for i, expected_day in enumerate(expected_days):
                 bucket = { 'time_period': day_labels[i] }
-                male_count = female_count = 0
-                if breakdown in ("none", "gender"):
+                if breakdown == "none":
+                    avg_val = 0.0
+                    sum_val = 0.0
+                    cnt_val = 0
+                    for r in rows:
+                        db_day = int(getattr(r, 'bucket'))
+                        if db_day in day_mapping and day_mapping[db_day] == expected_day:
+                            avg_val = float(getattr(r, 'avg_sec') or 0)
+                            sum_val = float(getattr(r, 'sum_sec') or 0)
+                            cnt_val = int(getattr(r, 'event_count') or 0)
+                            break
+                    if metric_type == 'average':
+                        bucket['total_minutes'] = round(avg_val / 60.0, 2)
+                    else:
+                        bucket['total_minutes'] = round(sum_val / 60.0, 2)
+                    bucket['sample_size'] = cnt_val
+                elif breakdown in ("none", "gender"):
+                    male_count = female_count = 0
                     male_val = female_val = 0.0
                     male_sum = female_sum = 0.0
                     for r in rows:
                         db_day = int(getattr(r, 'bucket'))
                         if db_day in day_mapping and day_mapping[db_day] == expected_day:
-                            if r.gender == 'male':
+                            if getattr(r, 'gender') == 'male':
                                 male_val = float(getattr(r, 'avg_sec') or 0)
                                 male_sum = float(getattr(r, 'sum_sec') or 0)
                                 male_count = int(getattr(r, 'event_count') or 0)
-                            elif r.gender == 'female':
+                            elif getattr(r, 'gender') == 'female':
                                 female_val = float(getattr(r, 'avg_sec') or 0)
                                 female_sum = float(getattr(r, 'sum_sec') or 0)
                                 female_count = int(getattr(r, 'event_count') or 0)
@@ -361,53 +432,54 @@ async def get_dwell_time_time_series(
                         bucket['female_minutes'] = round(female_sum / 60.0, 2)
                         bucket['total_minutes'] = round((male_sum + female_sum) / 60.0, 2)
                     bucket['sample_size'] = male_count + female_count
-                elif breakdown == "age":
-                    age_groups = {}
-                    total_sum = 0.0
-                    total_cnt = 0
-                    for r in rows:
-                        db_day = int(getattr(r, 'bucket'))
-                        if db_day in day_mapping and day_mapping[db_day] == expected_day:
-                            age = getattr(r, 'age_group') or 'Other'
-                            val = float(getattr(r, 'avg_sec') or 0)
-                            s = float(getattr(r, 'sum_sec') or 0)
-                            c = int(getattr(r, 'event_count') or 0)
-                            if metric_type == 'average':
-                                age_groups[age] = round(val / 60.0, 2)
-                                total_sum += val * c
-                                total_cnt += c
-                            else:
-                                age_groups[age] = round(s / 60.0, 2)
-                                total_sum += s
-                                total_cnt += c
-                    bucket['age_groups'] = [ { 'age_group': k, 'minutes': v } for k, v in age_groups.items() ]
-                    bucket['total_minutes'] = round((total_sum / total_cnt) / 60.0, 2) if metric_type == 'average' and total_cnt > 0 else round(total_sum / 60.0, 2)
-                    bucket['sample_size'] = total_cnt
                 else:
-                    gender_age = { 'male': {}, 'female': {} }
-                    total_sum = 0.0
-                    total_cnt = 0
-                    for r in rows:
-                        db_day = int(getattr(r, 'bucket'))
-                        if db_day in day_mapping and day_mapping[db_day] == expected_day:
-                            g = getattr(r, 'gender')
-                            age = getattr(r, 'age_group') or 'Other'
-                            val = float(getattr(r, 'avg_sec') or 0)
-                            s = float(getattr(r, 'sum_sec') or 0)
-                            c = int(getattr(r, 'event_count') or 0)
-                            if g not in ('male','female'):
-                                continue
-                            if metric_type == 'average':
-                                gender_age[g][age] = round(val / 60.0, 2)
-                                total_sum += val * c
-                                total_cnt += c
-                            else:
-                                gender_age[g][age] = round(s / 60.0, 2)
-                                total_sum += s
-                                total_cnt += c
-                    bucket['gender_age'] = { 'male': [ { 'age_group': k, 'minutes': v } for k, v in gender_age['male'].items() ], 'female': [ { 'age_group': k, 'minutes': v } for k, v in gender_age['female'].items() ] }
-                    bucket['total_minutes'] = round((total_sum / total_cnt) / 60.0, 2) if metric_type == 'average' and total_cnt > 0 else round(total_sum / 60.0, 2)
-                    bucket['sample_size'] = total_cnt
+                    if breakdown == "age":
+                        age_groups = {}
+                        total_sum = 0.0
+                        total_cnt = 0
+                        for r in rows:
+                            db_day = int(getattr(r, 'bucket'))
+                            if db_day in day_mapping and day_mapping[db_day] == expected_day:
+                                age = getattr(r, 'age_group') or 'Other'
+                                val = float(getattr(r, 'avg_sec') or 0)
+                                s = float(getattr(r, 'sum_sec') or 0)
+                                c = int(getattr(r, 'event_count') or 0)
+                                if metric_type == 'average':
+                                    age_groups[age] = round(val / 60.0, 2)
+                                    total_sum += val * c
+                                    total_cnt += c
+                                else:
+                                    age_groups[age] = round(s / 60.0, 2)
+                                    total_sum += s
+                                    total_cnt += c
+                        bucket['age_groups'] = [ { 'age_group': k, 'minutes': v } for k, v in age_groups.items() ]
+                        bucket['total_minutes'] = round((total_sum / total_cnt) / 60.0, 2) if metric_type == 'average' and total_cnt > 0 else round(total_sum / 60.0, 2)
+                        bucket['sample_size'] = total_cnt
+                    else:  # gender_age
+                        gender_age = { 'male': {}, 'female': {} }
+                        total_sum = 0.0
+                        total_cnt = 0
+                        for r in rows:
+                            db_day = int(getattr(r, 'bucket'))
+                            if db_day in day_mapping and day_mapping[db_day] == expected_day:
+                                g = getattr(r, 'gender')
+                                age = getattr(r, 'age_group') or 'Other'
+                                val = float(getattr(r, 'avg_sec') or 0)
+                                s = float(getattr(r, 'sum_sec') or 0)
+                                c = int(getattr(r, 'event_count') or 0)
+                                if g not in ('male','female'):
+                                    continue
+                                if metric_type == 'average':
+                                    gender_age[g][age] = round(val / 60.0, 2)
+                                    total_sum += val * c
+                                    total_cnt += c
+                                else:
+                                    gender_age[g][age] = round(s / 60.0, 2)
+                                    total_sum += s
+                                    total_cnt += c
+                        bucket['gender_age'] = { 'male': [ { 'age_group': k, 'minutes': v } for k, v in gender_age['male'].items() ], 'female': [ { 'age_group': k, 'minutes': v } for k, v in gender_age['female'].items() ] }
+                        bucket['total_minutes'] = round((total_sum / total_cnt) / 60.0, 2) if metric_type == 'average' and total_cnt > 0 else round(total_sum / 60.0, 2)
+                        bucket['sample_size'] = total_cnt
                 data.append(bucket)
 
         return {
@@ -421,6 +493,7 @@ async def get_dwell_time_time_series(
                 'department': department,
                 'store': store,
                 'camera': camera,
+                'camera_category': camera_category or 'all-excluding-cashier',
             },
             'debug': {
                 'rows': len(rows)

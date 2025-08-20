@@ -167,7 +167,7 @@ export const DwellTimeTimeChart: React.FC<Props> = ({ data, title, isLoading = f
 		},
 	};
 
-	// Custom plugin to render non-zero value labels; hidden while hovering (tooltip active)
+	// Custom plugin to render non-zero value labels; hidden while hovering (tooltip active) and when dataset hidden via legend
 	const valueLabelPlugin = {
 		id: 'valueLabelPlugin',
 		afterDatasetsDraw(chart: any) {
@@ -177,6 +177,8 @@ export const DwellTimeTimeChart: React.FC<Props> = ({ data, title, isLoading = f
 			ctx.save();
 			chart.data.datasets.forEach((ds: any, di: number) => {
 				const meta = chart.getDatasetMeta(di);
+				// Skip hidden datasets (toggled off in legend)
+				if (!chart.isDatasetVisible(di) || meta.hidden) return;
 				meta.data.forEach((element: any, i: number) => {
 					const raw = ds.data[i];
 					const val = typeof raw === 'number' ? raw : Number(raw);

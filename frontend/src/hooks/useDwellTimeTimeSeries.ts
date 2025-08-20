@@ -24,9 +24,10 @@ interface Params {
 	metricType: DwellMetricType;
 	breakdown: DwellBreakdown;
 	camera?: string;
+	cameraCategory?: 'all' | 'entrance' | 'store' | 'cashier';
 }
 
-export function useDwellTimeTimeSeries({ viewType, metricType, breakdown, camera }: Params) {
+export function useDwellTimeTimeSeries({ viewType, metricType, breakdown, camera, cameraCategory }: Params) {
 	const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters();
 	const [data, setData] = useState<DwellTimeSeriesPoint[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +48,7 @@ export function useDwellTimeTimeSeries({ viewType, metricType, breakdown, camera
 				if (gDept) params.append("department", gDept);
 				if (gStore) params.append("store", gStore);
 				if (camera) params.append("camera", camera);
+				if (cameraCategory) params.append("camera_category", cameraCategory);
 				const res = await fetch(`/api/v1/analytics/dwell-time-time-series?${params.toString()}`);
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
 				const json = await res.json();
@@ -59,7 +61,7 @@ export function useDwellTimeTimeSeries({ viewType, metricType, breakdown, camera
 			}
 		};
 		fetchData();
-	}, [viewType, metricType, breakdown, camera, gDept, gStore, gPeriod, gDate]);
+	}, [viewType, metricType, breakdown, camera, cameraCategory, gDept, gStore, gPeriod, gDate]);
 
 	return { data, isLoading, error };
 }

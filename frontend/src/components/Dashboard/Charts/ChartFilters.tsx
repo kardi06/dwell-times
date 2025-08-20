@@ -7,6 +7,9 @@ import { useCameras, type CameraOption as HookCameraOption } from "../../../hook
 export type TimePeriod = "day" | "week" | "month" | "quarter" | "year";
 export type MetricType = "total" | "average";
 
+// New: camera category type
+export type CameraCategory = 'all' | 'entrance' | 'store';
+
 type CameraOption = HookCameraOption;
 
 interface ChartFiltersProps {
@@ -16,10 +19,9 @@ interface ChartFiltersProps {
   onTimePeriodChange: (period: TimePeriod) => void;
   onMetricTypeChange: (type: MetricType) => void;
   onDateChange: (date: Date | null) => void;
-  // Camera options & selection
-  cameraOptions?: CameraOption[];
-  selectedCamera?: string;
-  onCameraChange?: (camera: string) => void;
+  // Camera category selection
+  cameraCategory?: CameraCategory;
+  onCameraCategoryChange?: (category: CameraCategory) => void;
 }
 
 export const ChartFilters: React.FC<ChartFiltersProps> = ({
@@ -29,9 +31,8 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
   onTimePeriodChange,
   onMetricTypeChange,
   onDateChange,
-  cameraOptions = [],
-  selectedCamera = "",
-  onCameraChange,
+  cameraCategory = 'all',
+  onCameraCategoryChange,
 }) => {
   const timePeriodOptions = [
     { value: "day", label: "Day" },
@@ -46,100 +47,7 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
     { value: "average", label: "Average Dwell Time" },
   ];
 
-  // Pull global Department/Store and fetch cameras accordingly
-  const { department: gDept, store: gStore } = useGlobalFilters();
-  const { cameras: fetchedCameras, isLoading: camerasLoading } = useCameras({
-    department: gDept || undefined,
-    store: gStore || undefined,
-  });
-
-  // Base options from props or fetched
-  const baseOptions: CameraOption[] = cameraOptions.length > 0 ? cameraOptions : fetchedCameras;
-
-  // Shape options per rules
-  let displayOptions: { value: string; label: string }[] = [];
-  if (!gDept && !gStore) {
-    // No department/store: list unique cameras across all, label as camera name only
-    const seen = new Set<string>();
-    for (const opt of baseOptions) {
-      const cam = (opt.value || "").trim();
-      if (!cam) continue;
-      if (!seen.has(cam)) {
-        seen.add(cam);
-        displayOptions.push({ value: cam, label: cam });
-      }
-    }
-  } else if (gDept && !gStore) {
-    // Add aggregated per-camera '(All Stores)' first
-    const seenCam = new Set<string>();
-    for (const opt of baseOptions) {
-      const cam = (opt.value || "").trim();
-      if (!cam) continue;
-      if (!seenCam.has(cam)) {
-        seenCam.add(cam);
-        displayOptions.push({ value: cam, label: `${cam} (All Stores)` });
-      }
-    }
-    // const seenPairs = new Set<string>();
-    // for (const opt of baseOptions) {
-    //   const cam = (opt.value || "").trim();
-    //   if (!cam) continue;
-    //   const storeName = (opt.store || "").trim();
-    //   if (!storeName) continue; // skip unknown stores
-    //   const key = `${cam}::${storeName}`;
-    //   if (seenPairs.has(key)) continue;
-    //   seenPairs.add(key);
-    //   displayOptions.push({ value: cam, label: `${cam} (${storeName})` });
-    // }
-    // Per-store options omitted when department is selected without store (show aggregated only)
-
-  } else {
-    // Store selected: only that store's cameras (API already filtered), label camera name
-    const seen = new Set<string>();
-    for (const opt of baseOptions) {
-      const cam = (opt.value || "").trim();
-      if (!cam) continue;
-      if (!seen.has(cam)) {
-        seen.add(cam);
-        displayOptions.push({ value: cam, label: cam });
-      }
-    }
-  }
-
-  const formatDateDisplay = (date: Date | null, period: TimePeriod): string => {
-    if (!date) return "";
-
-    switch (period) {
-      case "day":
-        return date.toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-          year: "numeric",
-        });
-      case "week":
-        const startOfWeek = new Date(date);
-        startOfWeek.setDate(date.getDate() - date.getDay());
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        return `Week of ${startOfWeek.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${endOfWeek.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
-      case "month":
-        return date.toLocaleDateString("en-US", {
-          month: "long",
-          year: "numeric",
-        });
-      case "quarter":
-        const quarter = Math.floor(date.getMonth() / 3) + 1;
-        const startMonth = (quarter - 1) * 3;
-        const startDate = new Date(date.getFullYear(), startMonth, 1);
-        const endDate = new Date(date.getFullYear(), startMonth + 2, 0);
-        return `Q${quarter} ${date.getFullYear()} (${startDate.toLocaleDateString("en-US", { month: "short" })} - ${endDate.toLocaleDateString("en-US", { month: "short" })})`;
-      case "year":
-        return date.getFullYear().toString();
-      default:
-        return date.toLocaleDateString();
-    }
-  };
-
+  // Keep date defaulting logic
   const getDefaultDate = (period: TimePeriod): Date => {
     const now = new Date();
     switch (period) {
@@ -189,19 +97,17 @@ export const ChartFilters: React.FC<ChartFiltersProps> = ({
           </select>
         </div>
 
-        {/* Camera filter */}
+        {/* Camera Category */}
         <div className="flex flex-col min-w-[260px]">
-          <label className="text-sm font-medium text-gray-700 mb-1">Camera</label>
+          <label className="text-sm font-medium text-gray-700 mb-1">Camera Category</label>
           <select
-            value={selectedCamera}
-            onChange={(e) => onCameraChange && onCameraChange(e.target.value)}
+            value={cameraCategory}
+            onChange={(e) => onCameraCategoryChange && onCameraCategoryChange(e.target.value as any)}
             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            disabled={camerasLoading}
           >
-            <option value="">All Cameras</option>
-            {displayOptions.map((opt) => (
-              <option key={`${opt.value}::${opt.label}`} value={opt.value}>{opt.label}</option>
-            ))}
+            <option value="all">All Cameras (Entrance + Store)</option>
+            <option value="entrance">Entrance Cameras</option>
+            <option value="store">Store Cameras</option>
           </select>
         </div>
       </div>

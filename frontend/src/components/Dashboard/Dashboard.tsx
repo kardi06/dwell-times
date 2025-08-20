@@ -22,7 +22,7 @@ import { FootTrafficChartConfig } from "./Charts/FootTrafficChart";
 import { useGlobalFilters } from "../../store/globalFilters";
 // import { computeRange, toApiDate } from "../../utils/dateRange";
 import "react-datepicker/dist/react-datepicker.css";
-import { useCameras, CameraOption } from "../../hooks/useCameras";
+// import { useCameras, CameraOption } from "../../hooks/useCameras";
 import { useDwellTimeTimeSeries } from "../../hooks/useDwellTimeTimeSeries";
 
 interface DashboardProps {
@@ -75,6 +75,12 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
 
   const [seriesViewType, setSeriesViewType] = useState<"hourly" | "daily">("hourly");
   const [seriesBreakdown, setSeriesBreakdown] = useState<"none" | "gender" | "age" | "gender_age">("none");
+  // New: camera category for general dwell charts (all = entrance+store only)
+  const [cameraCategory, setCameraCategory] = useState<'all' | 'entrance' | 'store'>('all');
+
+  // Cashier Efficiency local controls
+  const [cashierViewType, setCashierViewType] = useState<"hourly" | "daily">("hourly");
+  const [cashierMetricType, setCashierMetricType] = useState<MetricType>("average");
 
   const formatDateForApi = (date: Date) => {
     const y = date.getFullYear();
@@ -86,8 +92,7 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
   // Global filters
 	const { department: gDept, store: gStore, timePeriod: gPeriod, date: gDate } = useGlobalFilters();
 
-  // Load camera options based on global filters
-  const { cameras: cameraOptions } = useCameras({ department: gDept || undefined, store: gStore || undefined });
+  // Removed per-camera dropdown in favor of camera category (story 1.16)
   const [selectedCamera, setSelectedCamera] = useState<string>("");
 
   // Reset local camera selection when global store changes
@@ -96,7 +101,10 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
     setFilters((prev) => ({ ...prev, camera: "" }));
   }, [gDept, gStore]);
 
-  const { data: dwellTimeSeries, isLoading: dwellSeriesLoading } = useDwellTimeTimeSeries({ viewType: seriesViewType, metricType: metricType === 'average' ? 'average' : 'total', breakdown: seriesBreakdown, camera: selectedCamera || undefined });
+  const { data: dwellTimeSeries, isLoading: dwellSeriesLoading } = useDwellTimeTimeSeries({ viewType: seriesViewType, metricType: metricType === 'average' ? 'average' : 'total', breakdown: seriesBreakdown, camera: selectedCamera || undefined, cameraCategory });
+
+  // Cashier Efficiency series
+  const { data: cashierSeries, isLoading: cashierLoading } = useDwellTimeTimeSeries({ viewType: cashierViewType, metricType: cashierMetricType, breakdown: 'none', cameraCategory: 'cashier' });
 
   const fetchMetrics = async () => {
     setLoading(true);
@@ -489,12 +497,8 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                   onTimePeriodChange={setTimePeriod}
                   onMetricTypeChange={setMetricType}
                   onDateChange={setSelectedDate}
-                  cameraOptions={cameraOptions as CameraOption[]}
-                  selectedCamera={selectedCamera}
-                  onCameraChange={(val) => {
-                    setSelectedCamera(val);
-                    setFilters((prev) => ({ ...prev, camera: val }));
-                  }}
+                  cameraCategory={cameraCategory}
+                  onCameraCategoryChange={setCameraCategory}
                 />
               </div>
               {/* New: Time Series (Avg Dwell by Hour/Day) */}
@@ -562,6 +566,32 @@ const Dashboard: React.FC<DashboardProps> = ({ token }) => {
                     metricType={metricType}
                   />
                 </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Cashier Efficiency */}
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-1">Cashier Efficiency</h3>
+                  <p className="text-gray-600 text-sm">Cashier cameras only (dwell minutes)</p>
+                </div>
+              </div>
+              <div className="mb-6 bg-white rounded-lg p-4 shadow-sm border">
+                <div className="flex flex-wrap items-center justify-between mb-3 gap-2">
+                  <h4 className="text-md font-semibold text-gray-800">{cashierMetricType === 'average' ? 'Average Dwell Time' : 'Total Dwell Time'}</h4>
+                  <div className="flex items-center gap-2">
+                    <button className={`px-3 py-1 rounded ${cashierViewType === 'hourly' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`} onClick={() => setCashierViewType('hourly')}>Hourly</button>
+                    <button className={`px-3 py-1 rounded ${cashierViewType === 'daily' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`} onClick={() => setCashierViewType('daily')}>Daily</button>
+                    <select value={cashierMetricType} onChange={(e) => setCashierMetricType(e.target.value as MetricType)} className="ml-2 px-3 py-1 rounded border border-gray-300 bg-white text-gray-800">
+                      <option value="average">Average</option>
+                      <option value="total">Total</option>
+                    </select>
+                  </div>
+                </div>
+                <DwellTimeTimeChart data={cashierSeries} isLoading={cashierLoading} viewType={cashierViewType} breakdown={'none'} metricType={cashierMetricType} />
               </div>
             </div>
           </Card>
